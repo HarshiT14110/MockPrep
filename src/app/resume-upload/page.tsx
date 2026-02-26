@@ -56,7 +56,7 @@ export default function ResumeUploadPage() {
       const formData = new FormData();
       formData.append('resume', selectedFile);
 
-      const response = await fetch('/api/parse-resume', {
+      const response = await fetch("/api/upload-resume", {
         method: 'POST',
         body: formData,
       });
