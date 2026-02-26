@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;700&display=swap');
+@import "tailwindcss";
+
+/* =========================
+   Theme Variables (V4 Way)
+========================= */
+
+@theme {
+  --color-primary-bg: #F5F1E8;
+  --color-accent-brown: #6B4F3B;
+  --color-accent-mocha: #8B6A55;
+
+  --radius-20: 20px;
+  --radius-24: 24px;
+  --radius-28: 28px;
+
+  --shadow-elegant: 0 10px 30px rgba(107, 79, 59, 0.08);
+  --shadow-lg-layer: 0 12px 24px rgba(107, 79, 59, 0.12);
+  --shadow-md-layer: 0 4px 12px rgba(107, 79, 59, 0.08);
+  --shadow-soft-glow: 0 0 25px rgba(107, 79, 59, 0.15);
+
+  --font-heading: "Playfair Display", serif;
+  --font-body: "Inter", sans-serif;
+
+  --ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================
+   Base
+========================= */
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-primary-bg);
+  color: var(--color-accent-brown);
+}
+
+body {
+  font-family: var(--font-body);
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: url("https://grainy-gradients.vercel.app/noise.svg");
+  opacity: 0.15;
+}
+
+/* =========================
+   Components
+========================= */
+
+.premium-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(6px);
+  border-radius: var(--radius-28);
+  box-shadow: var(--shadow-elegant);
+  border: 1px solid rgba(107, 79, 59, 0.05);
+  transition: all 300ms var(--ease-premium);
+}
+
+.premium-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg-layer);
+}
+
+.premium-button-primary {
+  padding: 1rem 2rem;
+  background: var(--color-accent-brown);
+  color: var(--color-primary-bg);
+  border-radius: var(--radius-24);
+  font-weight: 600;
+  box-shadow: var(--shadow-md-layer);
+  transition: all 300ms var(--ease-premium);
+}
+
+.premium-button-primary:hover {
+  box-shadow: var(--shadow-soft-glow);
+  opacity: 0.95;
+}
+
+.premium-button-secondary {
+  padding: 1rem 2rem;
+  background: transparent;
+  border: 2px solid var(--color-accent-brown);
+  color: var(--color-accent-brown);
+  border-radius: var(--radius-24);
+  font-weight: 600;
+  transition: all 300ms var(--ease-premium);
+}
+
+.premium-input {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(139, 106, 85, 0.2);
+  border-radius: var(--radius-20);
+  transition: all 300ms var(--ease-premium);
+}
+
+.premium-input:focus {
+  border-color: var(--color-accent-brown);
+  outline: none;
+}
+
+/* Glass */
+
+.glass-panel {
+  background: rgba(255, 253, 245, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(107, 79, 59, 0.1);
+}
+
+/* Text Gradient */
+
+.text-gradient-brown {
+  background: linear-gradient(to bottom right,
+      var(--color-accent-brown),
+      var(--color-accent-mocha));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
