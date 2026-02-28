@@ -10,7 +10,6 @@ import {
   PlayCircle,
   History,
   TrendingUp,
-  Target,
   BrainCircuit,
   Settings,
   Bell,
@@ -37,7 +36,7 @@ interface DashboardData {
   resumeStatus: 'uploaded' | 'not_uploaded';
 }
 
-const COLORS = ['#6B4F3B', '#8B6A55', '#D2B48C', '#A67B5B']; // Warm Brown Shades
+const COLORS = ['#6B4F3B', '#8B6A55', '#D2B48C', '#A67B5B'];
 
 const RadialProgress: React.FC<{ progress: number; label: string }> = ({ progress, label }) => {
   const radius = 45;
@@ -112,7 +111,6 @@ export default function DashboardPage() {
         const data = await response.json();
         const { userProfile, interviewSessions } = data;
 
-        // Custom logic remains untouched
         const totalInterviews = interviewSessions?.length || 0;
         const performanceData = [
           { name: 'Technical', value: 45 },
@@ -177,7 +175,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-accent-brown font-body">
-      {/* Sidebar Navigation (Visual Only) */}
+      {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-20 hidden lg:flex flex-col items-center py-8 gap-8 border-r border-accent-brown/5 glass-panel z-50">
         <div className="w-10 h-10 bg-accent-brown rounded-12 flex items-center justify-center shadow-md-layer mb-4">
           <Cpu className="text-primary-bg w-6 h-6" />
@@ -215,13 +213,12 @@ export default function DashboardPage() {
         </header>
 
         <main className="p-8 max-w-[1400px] mx-auto">
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+
+          {/* Quick Stats Grid — Score cards removed */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             {[
-              { label: 'Total Sessions', value: totalInterviews, icon: PlayCircle, color: 'accent-brown' },
-              { label: 'Avg. Score', value: '78%', icon: TrendingUp, color: 'accent-mocha' },
-              { label: 'Improvement', value: '+12%', icon: Target, color: 'soft-coffee' },
-              { label: 'Resume Status', value: resumeStatus === 'uploaded' ? 'Standard' : 'Missing', icon: FileText, color: 'accent-brown' },
+              { label: 'Total Sessions', value: totalInterviews, icon: PlayCircle },
+              { label: 'Resume Status', value: resumeStatus === 'uploaded' ? 'Uploaded ✓' : 'Not Uploaded', icon: FileText },
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -253,7 +250,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-500 font-light">Detailed breakdown of your interview metrics.</p>
                   </div>
                   <div className="flex gap-2">
-                    {['W', 'M', 'Y'].map(t => <button key={t} className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${t === 'M' ? 'bg-accent-brown text-white' : 'text-accent-brown/40 hover:bg-accent-brown/5'}`}>{t}</button>)}
+                    {['W', 'M', 'Y'].map(t => (
+                      <button key={t} className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${t === 'M' ? 'bg-accent-brown text-white' : 'text-accent-brown/40 hover:bg-accent-brown/5'}`}>{t}</button>
+                    ))}
                   </div>
                 </div>
 
@@ -272,9 +271,7 @@ export default function DashboardPage() {
                             <stop offset="95%" stopColor="#6B4F3B" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <Tooltip
-                          contentStyle={{ background: '#F5F1E8', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(107, 79, 59, 0.1)' }}
-                        />
+                        <Tooltip contentStyle={{ background: '#F5F1E8', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(107, 79, 59, 0.1)' }} />
                         <Area type="monotone" dataKey="score" stroke="#6B4F3B" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -323,7 +320,7 @@ export default function DashboardPage() {
                       <div className="w-10 h-10 bg-accent-mocha/10 text-accent-mocha rounded-12 flex items-center justify-center">
                         <FileText className="w-5 h-5" />
                       </div>
-                      <span className="text-sm font-bold">{resumeStatus === 'uploaded' ? 'data_analyst.pdf' : 'No data'}</span>
+                      <span className="text-sm font-bold">{resumeStatus === 'uploaded' ? 'Resume uploaded ✓' : 'No resume'}</span>
                     </div>
                     <Link to="/resume-upload">
                       <button className="text-xs font-bold text-accent-brown hover:underline underline-offset-4 decoration-2">

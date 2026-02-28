@@ -31,7 +31,13 @@ export default function ResumeUploadPage() {
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (event.dataTransfer.files && event.dataTransfer.files[0]) {
-      setSelectedFile(event.dataTransfer.files[0]);
+      const file = event.dataTransfer.files[0];
+      if (file.type !== 'application/pdf') {
+        setError('Only PDF files are accepted.');
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
       setUploadSuccess(false);
       setError(null);
     }
@@ -53,6 +59,7 @@ export default function ResumeUploadPage() {
 
     try {
       console.log("🚀 Starting resume upload and parse...");
+
       const formData = new FormData();
       formData.append('resume', selectedFile);
 
@@ -66,16 +73,24 @@ export default function ResumeUploadPage() {
       }
 
       const data = await response.json();
-      const extractedText = data.text;
+      console.log("📦 Upload API response:", data);
+
+      // ✅ SAFE handling
+      const extractedText: string = data?.text || "";
+
+      
+
       console.log("✅ Resume parsed successfully. Extracted text length:", extractedText.length);
 
       setUploadSuccess(true);
+
       setTimeout(() => {
         navigate(`/live-interview?type=${interviewType}`);
       }, 1500);
+
     } catch (err) {
-      setError('Failed to upload/parse resume. Please try again.');
       console.error('Resume processing error:', err);
+      setError('Failed to upload/parse resume. Please try again.');
     } finally {
       setIsUploading(false);
     }

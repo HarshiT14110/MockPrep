@@ -33,7 +33,7 @@ mongoose
     console.error("❌ MongoDB Connection Error:", err);
     process.exit(1);
   });
-  mongoose.set("returnDocument", "after");
+mongoose.set("returnDocument", "after");
 
 // ==============================
 // User Interface
@@ -184,54 +184,230 @@ async function startServer() {
   // ==============================
 
   const upload = multer({
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 5 * 1024 * 1024 },
   });
-
+  console.log("Generate Questions hit. userId:", User);
   app.post(
-    "/api/upload-resume",
-    requireAuth(),
-    upload.single("resume"),
-    async (req: Request, res: Response) => {
-      try {
-        const { userId } = getAuth(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  "/api/upload-resume",
+  requireAuth(),
+  upload.single("resume"),
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = getAuth(req);
 
-        const file = (req as any).file;
+      console.log("🔥 Clerk userId:", userId);
 
-        if (!file) {
-          return res.status(400).json({ error: "No resume uploaded" });
-        }
+      if (!userId) {
+        console.log("❌ No userId found");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
-        if (file.mimetype !== "application/pdf") {
-          return res.status(400).json({ error: "Only PDF allowed" });
-        }
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ error: "No resume uploaded" });
+      }
 
-        const data = await pdfParse(file.buffer);
-        const extractedText = data.text;
+      const data = await pdfParse(file.buffer);
+      const extractedText = data.text;
 
-        await User.findOneAndUpdate(
+      const updatedUser = await User.findOneAndUpdate(
         { clerk_user_id: userId },
         { resume_text: extractedText },
-        { returnDocument: "after" }
+        { upsert: true, returnDocument: "after" }
+      );
+
+      console.log("✅ Updated user document:", updatedUser);
+
+      res.json({
+  success: true,
+  text: extractedText,
+  debug: "THIS_IS_NEW_SERVER"
+});
+    } catch (err: any) {
+      console.error("Resume parse error:", err);
+      res.status(500).json({ error: "Failed to parse PDF" });
+    }
+  }
 );
 
-        res.json({
-        success: true,
-        text: extractedText,
-});
-      } catch (err: any) {
-        console.error("Resume parse error:", err);
-        res.status(500).json({
-          error: "Failed to parse PDF",
-          details: err.message,
-        });
+  // ==============================
+  // Generate Interview Questions (Gemini)
+  // ==============================
+
+    app.post("/api/generate-questions", requireAuth(), async (req, res) => {
+  try {
+    console.log("🔥 HIT generate-questions route");
+
+    const { userId } = getAuth(req);
+    console.log("🔥 userId:", userId);
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = await User.findOne({ clerk_user_id: userId });
+    const resumeText = user?.resume_text || "";
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.error("❌ GEMINI_API_KEY missing");
+      return res.status(500).json({ error: "Gemini API key missing" });
+    }
+
+    const prompt = resumeText
+      ? `You are an expert technical interviewer.
+Based on this resume, generate exactly 5 tailored interview questions.
+
+Resume:
+${resumeText}
+
+Return ONLY a valid JSON array of 5 question strings.
+No markdown.
+No explanation.
+No extra text.
+Example:
+["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`
+      : `Generate exactly 5 general software engineering interview questions.
+
+Return ONLY a valid JSON array of 5 question strings.
+No markdown.
+No explanation.
+No extra text.
+Example:
+["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`;
+
+    const response = await fetch(
+   `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      
+    }),
+  }
+);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Gemini HTTP Error:", errorText);
+
+      return res.json({
+        questions: getFallbackQuestions(),
+      });
+    }
+
+    const data = await response.json();
+
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log("🧠 Gemini RAW RESPONSE:\n", raw);
+
+    // 🔥 Extract JSON array safely even if Gemini adds text
+    const match = raw.match(/\[[\s\S]*\]/);
+
+    let questions: string[] = [];
+
+    if (match) {
+      try {
+        questions = JSON.parse(match[0]);
+      } catch (err) {
+        console.error("❌ JSON parse failed:", err);
       }
     }
-  );
+
+    if (!questions || questions.length !== 5) {
+      console.warn("⚠️ Using fallback questions");
+      questions = getFallbackQuestions();
+    }
+
+    console.log("✅ Final questions:", questions);
+
+    return res.json({ questions });
+
+  } catch (err: any) {
+    console.error("❌ Generate questions error:", err);
+    return res.json({
+      questions: getFallbackQuestions(),
+    });
+  }
+});
+
+function getFallbackQuestions(): string[] {
+  return [
+    "Tell me about yourself.",
+    "Explain your most challenging project.",
+    "What are your technical strengths?",
+    "How do you debug complex issues?",
+    "Why should we hire you?"
+  ];
+}
+ 
+  // ==============================
+  // Analyze Answer (Gemini)
+  // ==============================
+
+  app.post("/api/analyze-answer", requireAuth(), async (req, res) => {
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const { question, answer } = req.body;
+      if (!question || !answer) {
+        return res
+          .status(400)
+          .json({ error: "Question and answer are required" });
+      }
+
+      const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+      if (!GEMINI_API_KEY) {
+        return res.status(500).json({ error: "Gemini API key missing" });
+      }
+
+      const prompt = `You are an expert interviewer. Analyze this interview answer and provide structured feedback.
+
+Question: ${question}
+Candidate's Answer: ${answer}
+
+Return ONLY a valid JSON object. No markdown, no extra text:
+{
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": ["improvement 1", "improvement 2"],
+  "overall_feedback": "2-3 sentence summary of the answer quality",
+  "rating": "Excellent"
+}
+
+The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.5, maxOutputTokens: 800 },
+          }),
+        }
+      );
+
+      const data = await response.json();
+      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      const feedback = JSON.parse(cleaned);
+
+      res.json({ feedback });
+    } catch (err: any) {
+      console.error("Analyze answer error:", err);
+      res
+        .status(500)
+        .json({ error: "Failed to analyze answer", details: err.message });
+    }
+  });
 
   // ==============================
   // Vite Middleware
   // ==============================
+
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
