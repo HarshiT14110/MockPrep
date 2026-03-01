@@ -23,8 +23,9 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
-  resume_url: string | null;
-  domain_detected: string | null;
+  resume_text?: string;
+  completed_sessions?: number;
+  createdAt?: string;
 }
 
 interface DashboardData {
@@ -109,9 +110,9 @@ export default function DashboardPage() {
         }
 
         const data = await response.json();
-        const { userProfile, interviewSessions } = data;
+        const userProfile = data.user;
 
-        const totalInterviews = interviewSessions?.length || 0;
+        const totalInterviews = userProfile?.completed_sessions || 0;
         const performanceData = [
           { name: 'Technical', value: 45 },
           { name: 'Behavioral', value: 35 },
@@ -126,7 +127,7 @@ export default function DashboardPage() {
           performanceData,
           weakAreas,
           suggestedTopics,
-          resumeStatus: userProfile?.resume_url ? 'uploaded' : 'not_uploaded',
+          resumeStatus: userProfile?.resume_text ? 'uploaded' : 'not_uploaded',
         });
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
@@ -172,6 +173,11 @@ export default function DashboardPage() {
   if (!dashboardData) return null;
 
   const { userProfile, totalInterviews, performanceData, weakAreas, suggestedTopics, resumeStatus } = dashboardData;
+
+const calculatedScore = userProfile?.completed_sessions
+  ? Math.min(userProfile.completed_sessions * 10, 100)
+  : 0;
+  
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-accent-brown font-body">
@@ -259,25 +265,38 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
                   <div className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={[
-                        { name: 'Jan', score: 65 },
-                        { name: 'Feb', score: 72 },
-                        { name: 'Mar', score: 68 },
-                        { name: 'Apr', score: 85 },
-                      ]}>
-                        <defs>
-                          <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6B4F3B" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#6B4F3B" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <Tooltip contentStyle={{ background: '#F5F1E8', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(107, 79, 59, 0.1)' }} />
-                        <Area type="monotone" dataKey="score" stroke="#6B4F3B" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
-                      </AreaChart>
+                      {totalInterviews === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-[250px] text-center text-accent-brown/60">
+                            <TrendingUp className="w-10 h-10 mb-4 opacity-40" />
+                            <p className="font-semibold">
+                              Complete your first interview to unlock performance analytics
+                            </p>
+                            <p className="text-xs mt-2">
+                              Your real performance graph will appear here.
+                            </p>
+                          </div>
+                        ) : (
+                          <AreaChart data={performanceData}>
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Area type="monotone" dataKey="value" stroke="#6B4F3B" fill="#D2B48C" />
+                            </AreaChart>
+                        )}
                     </ResponsiveContainer>
                   </div>
+                    
                   <div className="flex flex-col items-center">
-                    <RadialProgress progress={82} label="Ready Score" />
+                    {totalInterviews === 0 ? (
+                      <div className="text-center text-accent-brown/60">
+                        <BrainCircuit className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                        <p className="text-sm font-semibold">
+                          AI Score Available After First Interview
+                        </p>
+                      </div>
+                    ) : (
+                      <RadialProgress progress={calculatedScore} label="Interview Score" />
+                    )}
                     <div className="mt-8 flex gap-6 text-center">
                       {[
                         { l: 'Logic', color: COLORS[0] },
@@ -334,6 +353,56 @@ export default function DashboardPage() {
 
             {/* AI Insights Sidebar */}
             <div className="flex flex-col gap-8">
+              <motion.div
+                        initial={{ x: -60, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 1.2 }}
+                        className="premium-card p-8"
+                      >
+                        <h3 className="text-xl font-heading font-bold mb-6">
+                          Personal Profile
+                        </h3>
+
+                        <div className="space-y-4 text-sm text-accent-brown/80">
+
+                          <motion.p
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <strong>Name:</strong> {userProfile?.name || clerkUser?.fullName || "Not Available"}
+                          </motion.p>
+
+                          <motion.p
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.6 }}
+                          >
+                            <strong>Email:</strong> {userProfile?.email || clerkUser?.emailAddresses[0]?.emailAddress || "Not Available"}
+                          </motion.p>
+
+                          <motion.p
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.9 }}
+                          >
+                            <strong>Member Since:</strong>{" "}
+                            {userProfile?.createdAt
+                              ? new Date(userProfile.createdAt).toDateString()
+                              : "N/A"}
+                          </motion.p>
+
+                          <motion.p
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 1.2 }}
+                          >
+                            <strong>Completed Sessions:</strong>{" "}
+                            {userProfile?.completed_sessions || 0}
+                          </motion.p>
+
+                        </div>
+                      </motion.div>
               <div className="premium-card p-8 bg-white/40 border-dashed border-2 border-accent-brown/20 relative">
                 <div className="absolute -top-3 left-8 px-3 bg-primary-bg text-[10px] font-bold tracking-widest text-accent-mocha">AI INSIGHTS</div>
                 <div className="flex items-center gap-4 mb-8">
@@ -367,25 +436,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="premium-card p-8 bg-gradient-to-br from-accent-mocha to-accent-brown text-white">
-                <h3 className="text-lg font-heading font-bold mb-4">Milestone Progress</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-[10px] uppercase font-bold mb-2">
-                      <span>Mock Hero</span>
-                      <span>{totalInterviews}/10 Sessions</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(totalInterviews * 10, 100)}%` }}
-                        className="h-full bg-white"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-white/70 font-light italic">"The expert in anything was once a beginner."</p>
-                </div>
-              </div>
+             
             </div>
           </div>
         </main>

@@ -34,8 +34,15 @@ interface Feedback {
 
 
 // ─── Main Interview UI ────────────────────────────────────────────────────────
-const AIInterviewUI: React.FC = () => {
-  const call = useCall();
+interface AIInterviewUIProps {
+  client: any;
+  call: any;
+  setClient: React.Dispatch<any>;
+  clerkUser: any;
+}
+
+const AIInterviewUI: React.FC<AIInterviewUIProps> = ({ client, call, setClient, clerkUser }) => {
+  
   const navigate = useNavigate();
   const { getToken } = useAuth();
 
@@ -249,71 +256,139 @@ useEffect(() => {
     else { await camera.enable(); setIsCameraOff(false); }
   }, [camera, call]);
 
-  const endCall = useCallback(async () => {
+   const endCall = useCallback(async () => {
   try {
     window.speechSynthesis.cancel();
     recognitionRef.current?.stop();
 
-    if (microphone.enabled) {
-      await microphone.disable();
-    }
+    // Disable devices
+    if (call?.camera) await call.camera.disable().catch(() => {});
+    if (call?.microphone) await call.microphone.disable().catch(() => {});
 
-    if (camera.enabled) {
-      await camera.disable();
-    }
+    // Leave call
+    await call?.leave().catch(() => {});
 
-    await call?.leave();
+    // Disconnect Stream client
+    await client?.disconnectUser().catch(() => {});
+
+    // 🔥 THIS IS CRITICAL
+    setClient(null);
+
+    // Wait small delay to ensure cleanup
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 300);
+
   } catch (err) {
-    console.error("Error ending call:", err);
-  } finally {
-    setVoiceState("idle");
-    setLastTranscript("");
-    navigate('/dashboard');
+    console.error("Exit error:", err);
   }
-}, [call, navigate, microphone, camera]);
+}, [call, client, navigate, setClient]);
+
+
+//  Result page after interview completion
+
+    const [finalReport, setFinalReport] = useState<any>(null);
+    const [reportLoading, setReportLoading] = useState(false);
+
+    useEffect(() => {
+  if (!sessionComplete) return;
+
+  const generateReport = async () => {
+    try {
+      setReportLoading(true);
+
+      const token = await getToken();
+
+      const res = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          feedbackList: allFeedback,
+        }),
+      });
+
+      const data = await res.json();
+      setFinalReport(data.report);
+    } catch (err) {
+      console.error("Report generation failed:", err);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  generateReport();
+}, [sessionComplete]);
 
   // ── Session Complete ───────────────────────────────────────────────────────
   if (sessionComplete) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB] flex flex-col items-center justify-center p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="premium-card p-12 max-w-2xl w-full text-center"
-        >
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
-          <h1 className="text-4xl font-heading font-bold text-accent-brown mb-2">Interview Complete!</h1>
-          <p className="text-accent-brown/60 mb-10">Here's a summary of your performance.</p>
+  return (
+    <div className="min-h-screen bg-[#FDFCFB] flex flex-col items-center justify-center p-8">
+      <div className="premium-card p-12 max-w-3xl w-full">
 
-          <div className="space-y-6 text-left mb-10">
-            {allFeedback.map((item, i) => (
-              <div key={i} className="p-6 bg-accent-brown/5 rounded-20 border border-accent-brown/10">
-                <p className="text-xs uppercase tracking-widest text-accent-brown/40 mb-2">Q{i + 1}</p>
-                <p className="font-bold text-accent-brown mb-4">{item.question}</p>
-                <div className="mb-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    item.feedback.rating === 'Excellent' ? 'bg-green-100 text-green-700' :
-                    item.feedback.rating === 'Good' ? 'bg-blue-100 text-blue-700' :
-                    item.feedback.rating === 'Average' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>{item.feedback.rating}</span>
-                </div>
-                <p className="text-sm text-accent-brown/70">{item.feedback.overall_feedback}</p>
-              </div>
-            ))}
+        <h1 className="text-4xl font-heading font-bold text-accent-brown mb-2">
+          Interview Report Card
+        </h1>
+
+        <p className="text-sm text-accent-brown/60 mb-8">
+          Candidate: {clerkUser?.fullName}
+        </p>
+
+        {reportLoading && (
+          <div className="flex items-center gap-3">
+            <Loader2 className="animate-spin" />
+            Generating Final Report...
           </div>
+        )}
 
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="premium-button-primary w-full"
-          >
-            Back to Dashboard
-          </button>
-        </motion.div>
+        {finalReport && (
+          <>
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-3 text-green-600">
+                ⭐ Strengths
+              </h2>
+              <ul className="space-y-2">
+                {finalReport.strengths?.map((s: string, i: number) => (
+                  <li key={i}>• {s}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-3 text-orange-500">
+                📈 Areas of Improvement
+              </h2>
+              <ul className="space-y-2">
+                {finalReport.improvements?.map((s: string, i: number) => (
+                  <li key={i}>• {s}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold">
+                Overall Rating: {finalReport.overall_rating}
+              </h3>
+              <p className="mt-3 text-accent-brown/80">
+                {finalReport.overall_summary}
+              </p>
+            </div>
+          </>
+        )}
+
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="premium-button-primary w-full mt-6"
+        >
+          Back to Dashboard
+        </button>
+
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   // ── Loading Screen ─────────────────────────────────────────────────────────
   if (loadingQuestions) {
     return (
@@ -591,19 +666,24 @@ export default function LiveInterviewPage() {
   }, [isSignedIn, clerkUser, navigate, interviewId]);
 
   if (!client || !call) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-8 h-8 text-accent-brown animate-spin" />
-        <p className="text-accent-brown/50 text-sm">Initializing Interview...</p>
-      </div>
-    );
-  }
-
   return (
-    <StreamVideo client={client}>
-      <StreamCall call={call}>
-        <AIInterviewUI />
-      </StreamCall>
-    </StreamVideo>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <Loader2 className="w-8 h-8 text-accent-brown animate-spin" />
+      <p className="text-accent-brown/50 text-sm">Initializing Interview...</p>
+    </div>
   );
+}
+
+return client ? (
+  <StreamVideo client={client}>
+    <StreamCall call={call}>
+      <AIInterviewUI
+        client={client}
+        call={call}
+        setClient={setClient}
+        clerkUser={clerkUser}
+      />
+    </StreamCall>
+  </StreamVideo>
+) : null;
 }

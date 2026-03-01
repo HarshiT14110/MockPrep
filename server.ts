@@ -46,6 +46,7 @@ interface IUser extends Document {
   image?: string;
   createdAt: Date;
   resume_text?: string;
+  completed_sessions?: number;
 }
 
 // ==============================
@@ -59,6 +60,7 @@ const userSchema: Schema<IUser> = new Schema({
   image: String,
   createdAt: { type: Date, default: Date.now },
   resume_text: String,
+  completed_sessions: { type: Number, default: 0 },
 });
 
 const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
@@ -115,18 +117,18 @@ async function startServer() {
 
       const { name, email, image } = req.body;
 
-      let user = await User.findOne({ clerk_user_id: userId });
+      await User.findOneAndUpdate(
+  { clerk_user_id: userId },
+  {
+    clerk_user_id: userId,
+    name,
+    email,
+    image,
+  },
+  { upsert: true, new: true }
+);
 
-      if (!user) {
-        user = await User.create({
-          clerk_user_id: userId,
-          name,
-          email,
-          image,
-        });
-      }
-
-      res.json({ user });
+      res.json({ User });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Sync failed" });
@@ -234,7 +236,7 @@ async function startServer() {
   // Generate Interview Questions (Gemini)
   // ==============================
 
-    app.post("/api/generate-questions", requireAuth(), async (req, res) => {
+   app.post("/api/generate-questions", requireAuth(), async (req, res) => {
   try {
     console.log("🔥 HIT generate-questions route");
 
@@ -250,66 +252,53 @@ async function startServer() {
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
-      console.error("❌ GEMINI_API_KEY missing");
       return res.status(500).json({ error: "Gemini API key missing" });
     }
 
     const prompt = resumeText
-      ? `You are an expert technical interviewer.
-Based on this resume, generate exactly 5 tailored interview questions.
+      ? `You are an expert technical interviewer. Based on this resume, generate exactly 5 tailored interview questions specific to this candidate.
 
 Resume:
 ${resumeText}
 
-Return ONLY a valid JSON array of 5 question strings.
-No markdown.
-No explanation.
-No extra text.
-Example:
-["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`
+Return ONLY a valid JSON array of 5 question strings.`
       : `Generate exactly 5 general software engineering interview questions.
 
-Return ONLY a valid JSON array of 5 question strings.
-No markdown.
-No explanation.
-No extra text.
-Example:
-["Question 1?", "Question 2?", "Question 3?", "Question 4?", "Question 5?"]`;
+Return ONLY a valid JSON array of 5 question strings.`;
 
     const response = await fetch(
-   `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      
-    }),
-  }
-);
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("❌ Gemini HTTP Error:", errorText);
-
-      return res.json({
-        questions: getFallbackQuestions(),
-      });
+      return res.json({ questions: getFallbackQuestions() });
     }
 
     const data = await response.json();
 
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const raw =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+
     console.log("🧠 Gemini RAW RESPONSE:\n", raw);
 
-    // 🔥 Extract JSON array safely even if Gemini adds text
-    const match = raw.match(/\[[\s\S]*\]/);
+    let cleaned = raw.replace(/```json|```/g, "").trim();
+
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
 
     let questions: string[] = [];
 
-    if (match) {
+    if (arrayMatch) {
       try {
-        questions = JSON.parse(match[0]);
+        questions = JSON.parse(arrayMatch[0]);
       } catch (err) {
         console.error("❌ JSON parse failed:", err);
       }
@@ -326,9 +315,7 @@ Example:
 
   } catch (err: any) {
     console.error("❌ Generate questions error:", err);
-    return res.json({
-      questions: getFallbackQuestions(),
-    });
+    return res.json({ questions: getFallbackQuestions() });
   }
 });
 
@@ -404,6 +391,69 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
     }
   });
 
+
+    //ATS Score Route -------------------------------
+
+         
+              app.post("/api/ats-score", requireAuth(), async (req, res) => {
+                try {
+                  const { userId } = getAuth(req);
+                  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+                  const user = await User.findOne({ clerk_user_id: userId });
+                  const resumeText = user?.resume_text;
+
+                  if (!resumeText) {
+                    return res.json({ score: 0, summary: "No resume uploaded." });
+                  }
+
+                  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+                  if (!GEMINI_API_KEY) {
+                    return res.status(500).json({ error: "Gemini API key missing" });
+                  }
+
+                  const prompt = `
+              Analyze this resume and give an ATS score out of 100.
+              Return only JSON:
+              {
+                "score": 78,
+                "summary": "short explanation"
+              }
+
+              Resume:
+              ${resumeText}
+              `;
+
+                  const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                      }),
+                    }
+                  );
+
+                  const data = await response.json();
+                  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                  const cleaned = raw.replace(/```json|```/g, "").trim();
+                  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+
+                  let result = { score: 0, summary: "" };
+
+                  if (jsonMatch) {
+                    result = JSON.parse(jsonMatch[0]);
+                  }
+
+                  res.json(result);
+
+                } catch (err) {
+                  console.error("ATS score error:", err);
+                  res.status(500).json({ error: "ATS scoring failed" });
+                }
+              });
+
   // ==============================
   // Vite Middleware
   // ==============================
@@ -424,6 +474,85 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
     });
   }
 
+  // Result Analysis and Report Generation Route ---------------------------------
+
+    app.post(
+  "/api/generate-report",
+  requireAuth(),
+  async (req: Request, res: Response) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { feedbackList } = req.body;
+
+    if (!feedbackList || !feedbackList.length) {
+      return res.status(400).json({ error: "No feedback data provided" });
+    }
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+  return res.status(500).json({ error: "Gemini API key missing" });
+}
+
+    const prompt = `
+You are an expert interview evaluator.
+
+Based on the following interview feedback data, generate a structured final interview report.
+
+Return ONLY valid JSON in this format:
+
+{
+  "strengths": ["point1", "point2", "point3"],
+  "improvements": ["point1", "point2", "point3"],
+  "overall_summary": "short professional summary paragraph",
+  "overall_rating": "X/10"
+}
+
+Interview Feedback:
+${JSON.stringify(feedbackList)}
+`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      }
+    );
+
+    const data = await response.json();
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+    let cleaned = raw.replace(/```json|```/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+
+    let report = {};
+
+    if (jsonMatch) {
+      try {
+        report = JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.error("Report parse error:", err);
+      }
+    }
+
+    await User.findOneAndUpdate(
+  { clerk_user_id: userId },
+  { $inc: { completed_sessions: 1 } }
+);
+
+    return res.json({ report });
+
+  } catch (err: any) {
+    console.error("Generate report error:", err);
+    return res.status(500).json({ error: "Failed to generate report" });
+  }
+});
+
   // ==============================
   // Global Error Handler
   // ==============================
@@ -440,5 +569,10 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
     console.log(`🚀 Server running on http://localhost:${PORT}`);
   });
 }
+
+
+
+
+
 
 startServer();
