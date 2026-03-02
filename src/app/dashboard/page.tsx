@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTopic, setActiveTopic] = useState<string | null>("Confidence");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -378,8 +379,11 @@ const calculatedScore = userProfile?.completed_sessions
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: 0.6 }}
                           >
-                            <strong>Email:</strong> {userProfile?.email || clerkUser?.emailAddresses[0]?.emailAddress || "Not Available"}
-                          </motion.p>
+                            <strong>Email:</strong>{" "}
+                              {userProfile?.email ||
+                                clerkUser?.primaryEmailAddress?.emailAddress ||
+                                "Not Available"}
+                             </motion.p>
 
                           <motion.p
                             initial={{ x: -20, opacity: 0 }}
@@ -403,38 +407,69 @@ const calculatedScore = userProfile?.completed_sessions
 
                         </div>
                       </motion.div>
-              <div className="premium-card p-8 bg-white/40 border-dashed border-2 border-accent-brown/20 relative">
-                <div className="absolute -top-3 left-8 px-3 bg-primary-bg text-[10px] font-bold tracking-widest text-accent-mocha">AI INSIGHTS</div>
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 bg-accent-mocha text-white rounded-full flex items-center justify-center shadow-lg transform -rotate-12">
-                    <BrainCircuit className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-heading font-bold">Focus Points</h3>
-                </div>
+                
 
-                <div className="space-y-6">
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-accent-brown/40 block mb-3">Improvement Needed</label>
-                    <div className="flex flex-wrap gap-2">
-                      {weakAreas.map((area, i) => (
-                        <span key={i} className="px-4 py-2 bg-red-50 text-red-700 text-xs rounded-full border border-red-100/50">{area}</span>
-                      ))}
-                    </div>
-                  </div>
+                      <div className="premium-card p-8 bg-white/40 border-dashed border-2 border-accent-brown/20 relative">
+                          <div className="absolute -top-3 left-8 px-3 bg-primary-bg text-[10px] font-bold tracking-widest text-accent-mocha">
+                            GROWTH HUB
+                          </div>
 
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-accent-brown/40 block mb-3">Suggested for you</label>
-                    <div className="space-y-3">
-                      {suggestedTopics.map((topic, i) => (
-                        <div key={i} className="p-4 bg-white rounded-16 border border-accent-brown/5 flex items-center justify-between group cursor-pointer hover:border-accent-mocha/50 transition-colors">
-                          <span className="text-sm font-bold">{topic}</span>
-                          <ArrowRight className="w-4 h-4 text-accent-brown/0 group-hover:text-accent-brown/100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                          {/* Quote Section */}
+                          <div className="mb-6">
+                            <p className="text-sm italic text-accent-brown/70 leading-relaxed">
+                              "Confidence comes from preparation. Master your story, refine your skills, and let clarity replace fear."
+                            </p>
+                          </div>
+
+                          {/* Growth Buttons */}
+                          <div className="flex flex-wrap gap-3 mb-6">
+                            {["Confidence", "Communication", "System Design", "Problem Solving"].map((topic) => (
+                              <button
+                                key={topic}
+                                onClick={() => setActiveTopic(topic)}
+                                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                                  activeTopic === topic
+                                    ? "bg-accent-brown text-white"
+                                    : "bg-accent-brown/10 text-accent-brown hover:bg-accent-brown/20"
+                                }`}
+                              >
+                                {topic}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Expandable Content */}
+                          <div className="text-xs text-accent-brown/70 leading-relaxed min-h-[60px]">
+                            {activeTopic === "Confidence" && (
+                              <p>
+                                Practice mock interviews consistently. Record yourself, review body language, and improve clarity.
+                                Confidence grows with repetition and structured preparation.
+                              </p>
+                            )}
+
+                            {activeTopic === "Communication" && (
+                              <p>
+                                Use structured answers like STAR method. Focus on clarity, brevity, and impact.
+                                Avoid filler words and maintain steady pacing.
+                              </p>
+                            )}
+
+                            {activeTopic === "System Design" && (
+                              <p>
+                                Break problems into components. Discuss scalability, trade-offs, and bottlenecks.
+                                Interviewers evaluate structured thinking more than perfection.
+                              </p>
+                            )}
+
+                            {activeTopic === "Problem Solving" && (
+                              <p>
+                                Think out loud. Clarify constraints before coding.
+                                Optimize after achieving a correct baseline solution.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                
 
              
             </div>
