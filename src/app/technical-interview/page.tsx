@@ -49,8 +49,8 @@ export default function TechnicalInterviewPage() {
       link: '/live-interview?type=technical-mock',
     },
     {
-      title: 'Code Editor (LeetCode-like)',
-      description: 'Solve coding challenges in a LeetCode-style environment with multiple languages.',
+      title: 'Code Editor',
+      description: 'Solve coding challenges in multiple languages.',
       icon: Code,
       link: '/code-editor',
     },

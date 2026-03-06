@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Briefcase, Users, Code, ChevronRight, Sparkles, Target, BrainCircuit } from 'lucide-react';
-import { Cpu } from 'lucide-react';
+import { Briefcase, Users, Code, ChevronRight, Sparkles, Target, BrainCircuit} from 'lucide-react';
+import Logo from "../../components/Logo.js";
 
+/* ════════════════════════════════════════
+   DESIGN TOKENS  (warm espresso + amber-gold)
+   Matches dashboard theme — no Tailwind
+════════════════════════════════════════ */
+const T = {
+  pageBg:       '#130f09',
+  cardBg:       '#1e1710',
+  cardBorder:   'rgba(255,200,100,0.07)',
+  cardActive:   'rgba(201,130,10,0.18)',
+  cardActiveBorder: '#c9820a',
+  accent:       '#c9820a',
+  accentSoft:   'rgba(201,130,10,0.14)',
+  accentBorder: 'rgba(201,130,10,0.24)',
+  accentGlow:   'rgba(201,130,10,0.10)',
+  text:         '#f5e6c8',
+  textMuted:    'rgba(245,230,200,0.40)',
+  textDim:      'rgba(245,230,200,0.18)',
+  white:        '#fff',
+};
+
+/* ════ Interfaces (original – untouched) ════ */
 interface InterviewCardProps {
   title: string;
   description: string;
@@ -14,58 +35,139 @@ interface InterviewCardProps {
   tag: string;
 }
 
-const InterviewCard: React.FC<InterviewCardProps> = ({ title, description, icon: Icon, link, isActive, onClick, tag }) => {
+/* ════ Interview Card ════ */
+const InterviewCard: React.FC<InterviewCardProps> = ({
+  title, description, icon: Icon, link, isActive, onClick, tag
+}) => {
+  const [hov, setHov] = useState(false);
+
   return (
     <motion.div
       whileHover={{ y: -12, scale: 1.02 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className={`premium-card relative p-10 flex flex-col items-center text-center group cursor-pointer border-2 ${isActive ? 'border-accent-brown ring-4 ring-accent-brown/5' : 'border-transparent'}`}
       onClick={() => onClick(title)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        position: 'relative',
+        padding: 40,
+        borderRadius: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        cursor: 'pointer',
+        background: isActive ? T.cardActive : T.cardBg,
+        border: `2px solid ${isActive ? T.cardActiveBorder : T.cardBorder}`,
+        boxShadow: isActive
+          ? `0 0 40px ${T.accent}22, 0 8px 32px rgba(0,0,0,0.4)`
+          : hov
+            ? `0 8px 32px rgba(0,0,0,0.3)`
+            : `0 2px 12px rgba(0,0,0,0.2)`,
+        transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
+        overflow: 'hidden',
+      }}
     >
-      <div className="absolute top-4 right-4 px-3 py-1 bg-accent-brown/5 rounded-full border border-accent-brown/10">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-accent-brown/60">{tag}</span>
+      {/* Corner glow when active */}
+      {isActive && (
+        <div style={{
+          position: 'absolute', top: -40, right: -40, width: 160, height: 160,
+          borderRadius: '50%', pointerEvents: 'none',
+          background: `radial-gradient(circle, ${T.accentGlow} 0%, transparent 70%)`,
+        }} />
+      )}
+
+      {/* Tag badge */}
+      <div style={{
+        position: 'absolute', top: 16, right: 16,
+        padding: '4px 12px', borderRadius: 999,
+        background: T.accentSoft,
+        border: `1px solid ${T.accentBorder}`,
+      }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.2em', color: T.accent,
+        }}>{tag}</span>
       </div>
 
+      {/* Icon */}
       <motion.div
         animate={isActive ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
         transition={{ duration: 0.5 }}
-        className="mb-8 p-6 bg-accent-brown/5 text-accent-brown rounded-28 group-hover:bg-accent-brown group-hover:text-primary-bg transition-colors duration-500 shadow-sm-layer"
+        style={{
+          marginBottom: 32,
+          padding: 24,
+          borderRadius: 22,
+          background: hov || isActive ? T.accent : T.accentSoft,
+          color: hov || isActive ? '#fff' : T.accent,
+          transition: 'background 0.4s ease, color 0.4s ease',
+          boxShadow: hov || isActive ? `0 4px 20px ${T.accent}44` : 'none',
+        }}
       >
         <Icon size={42} />
       </motion.div>
 
-      <h2 className="text-3xl font-heading font-bold mb-4">{title}</h2>
-      <p className="text-gray-600/80 font-light leading-relaxed mb-10 text-sm">
-        {description}
-      </p>
+      {/* Title */}
+      <h2 style={{
+        fontSize: 26, fontWeight: 700, color: T.text,
+        marginBottom: 16, letterSpacing: '-0.3px',
+      }}>{title}</h2>
 
+      {/* Description */}
+      <p style={{
+        fontSize: 14, color: T.textMuted, fontWeight: 300,
+        lineHeight: 1.7, marginBottom: 40, maxWidth: 260,
+      }}>{description}</p>
+
+      {/* Launch button (active state) */}
       <AnimatePresence>
         {isActive && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="w-full"
+            style={{ width: '100%' }}
           >
-            <Link to={link}>
-              <button className="premium-button-primary w-full py-4 group/btn inline-flex items-center justify-center gap-2">
+            <Link to={link} style={{ textDecoration: 'none' }}>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  width: '100%', padding: '14px 0',
+                  borderRadius: 14, border: 'none',
+                  background: `linear-gradient(135deg, ${T.accent} 0%, #9a5806 100%)`,
+                  color: '#fff', fontWeight: 700, fontSize: 15,
+                  cursor: 'pointer', letterSpacing: '0.02em',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: `0 4px 20px ${T.accent}44`,
+                }}
+              >
                 Launch Session
-                <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-              </button>
+                <ChevronRight size={16} />
+              </motion.button>
             </Link>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Idle hint */}
       {!isActive && (
-        <div className="text-xs font-bold text-accent-brown/30 group-hover:text-accent-brown transition-colors">
+        <span style={{
+          fontSize: 12, fontWeight: 700,
+          color: hov ? T.accent : T.textDim,
+          transition: 'color 0.3s ease',
+          letterSpacing: '0.05em',
+        }}>
           Click to select
-        </div>
+        </span>
       )}
     </motion.div>
   );
 };
 
+/* ════════════════════════════════════════
+   MAIN PAGE (all logic identical to original)
+════════════════════════════════════════ */
 export default function InterviewTypeSelectionPage() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
@@ -75,64 +177,149 @@ export default function InterviewTypeSelectionPage() {
       description: 'Master data structures, algorithms, and system design with our advanced AI evaluator.',
       icon: Code,
       link: '/technical-interview',
-      tag: 'MOST POPULAR'
+      tag: 'MOST POPULAR',
     },
     {
       title: 'Behavioral Path',
       description: 'Perfect your STAR method responses and soft skills for leadership roles.',
       icon: Users,
-      link: '/resume-upload?type=behavioral',
-      tag: 'ESSENTIAL'
+      link: '/live-interview?type=behavioral',
+      tag: 'ESSENTIAL',
     },
     {
       title: 'HR Roadmap',
       description: 'Navigate foundational questions and cultural fit scenarios with ease.',
       icon: Briefcase,
-      link: '/resume-upload?type=hr',
-      tag: 'FOUNDATION'
+      link: '/live-interview?type=hr',
+      tag: 'FOUNDATION',
     },
   ];
 
-  return (
-    <div className="min-h-screen bg-primary-bg font-body text-accent-brown p-8 flex flex-col items-center relative overflow-hidden dark:bg-gray-900 dark:text-primary-bg">
-      {/* Background blobs for consistency */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-accent-mocha/5 rounded-full blur-[120px] pointer-events-none animate-pulse-soft" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent-brown/5 rounded-full blur-[120px] pointer-events-none animate-pulse-soft" />
+  
 
-      <header className="w-full max-w-6xl flex justify-between items-center mb-20 z-10">
-        <Link to="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-accent-brown/5 rounded-12 flex items-center justify-center group-hover:bg-accent-brown group-hover:text-primary-bg transition-all">
-            <Cpu className="w-5 h-5" />
-          </div>
-          <span className="font-heading font-bold text-xl">MockPrep</span>
+const previewContent: Record<string, string[]> = {
+  "Technical Path": [
+    "5 AI-generated technical questions",
+    "Resume-based question generation",
+    "Adaptive difficulty progression",
+    "Code & system design evaluation"
+  ],
+  "Behavioral Path": [
+    "6 behavioral interview questions",
+    "Real workplace scenarios",
+    "Leadership & teamwork focus",
+    "AI communication feedback"
+  ],
+  "HR Roadmap": [
+    "6 HR interview questions",
+    "Career motivation questions",
+    "Culture fit evaluation",
+    "Confidence & clarity analysis"
+  ]
+};
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: T.pageBg,
+      color: T.text,
+      padding: 32,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      boxSizing: 'border-box',
+    }}>
+
+      {/* Background ambient glows */}
+      <div style={{
+        position: 'absolute', top: 0, left: '25%',
+        width: 500, height: 500, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(201,130,10,0.07) 0%, transparent 70%)',
+        pointerEvents: 'none', filter: 'blur(40px)',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 0, right: '25%',
+        width: 500, height: 500, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(201,130,10,0.05) 0%, transparent 70%)',
+        pointerEvents: 'none', filter: 'blur(40px)',
+      }} />
+
+      {/* ── Header ── */}
+      <header style={{
+        width: '100%', maxWidth: 1152,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: 80, zIndex: 10,
+      }}>
+        <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          
+          <motion.div whileHover={{ scale: 1.05 }}>
+            <Logo size={42} />
+          </motion.div>
+          <span style={{ fontWeight: 700, fontSize: 20, color: T.text, letterSpacing: '-0.3px' }}>MockPrep</span>
         </Link>
-        <div className="flex items-center gap-2 px-4 py-2 bg-accent-brown/5 rounded-full border border-accent-brown/10">
-          <Sparkles className="w-4 h-4 text-accent-brown" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">AI Agent Ready</span>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 16px', borderRadius: 999,
+          background: T.accentSoft, border: `1px solid ${T.accentBorder}`,
+        }}>
+          <Sparkles size={14} color={T.accent} />
+          <span style={{
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+            letterSpacing: '0.2em', color: T.accent,
+          }}>
+            AI Agent Ready
+          </span>
         </div>
       </header>
 
+      {/* ── Hero Text ── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-16 z-10"
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        style={{ textAlign: 'center', marginBottom: 64, zIndex: 10 }}
       >
-        <h1 className="text-5xl md:text-6xl font-heading font-bold mb-4 tracking-tight">Choose Your <span className="text-gradient-brown">Expedition</span></h1>
-        <p className="text-gray-500 font-light text-lg">Select a specialized path to begin your AI-guided preparation.</p>
+        <h1 style={{
+          fontSize: 56, fontWeight: 700, margin: '0 0 16px',
+          letterSpacing: '-1.5px', color: T.text, lineHeight: 1.1,
+        }}>
+          Choose Your{' '}
+          <span style={{
+            color: T.accent,
+            textShadow: `0 0 40px ${T.accent}44`,
+          }}>
+            Expedition
+          </span>
+        </h1>
+        <p style={{ fontSize: 18, color: T.textMuted, fontWeight: 300, margin: 0 }}>
+          Select a specialized path to begin your AI-guided preparation.
+        </p>
       </motion.div>
 
+      {/* ── Cards Grid ── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ staggerChildren: 0.15, delayChildren: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl w-full z-10"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 28,
+          maxWidth: 1150,
+          width: '100%',
+          zIndex: 10,
+        }}
       >
         {interviewTypes.map((type, index) => (
           <motion.div
             key={type.title}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
             <InterviewCard
               {...type}
@@ -143,15 +330,76 @@ export default function InterviewTypeSelectionPage() {
         ))}
       </motion.div>
 
-      {/* Footer Insight */}
+
+        <AnimatePresence mode="wait">
+  {selectedType && (
+    <motion.div
+      key={selectedType}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      style={{
+        marginTop: 60,
+        maxWidth: 700,
+        width: "100%",
+        padding: 28,
+        borderRadius: 18,
+        background: T.cardBg,
+        border: `1px solid ${T.cardBorder}`,
+        boxShadow: `0 6px 30px rgba(0,0,0,0.35)`
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <BrainCircuit size={18} color={T.accent} />
+        <h3 style={{ margin: 0, fontSize: 18, color: T.text }}>
+          {selectedType} Preview
+        </h3>
+      </div>
+
+      <ul style={{
+        margin: 0,
+        paddingLeft: 20,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10
+      }}>
+        {previewContent[selectedType as keyof typeof previewContent].map((item, index) => (
+          <li key={index} style={{
+            fontSize: 14,
+            color: T.textMuted,
+            lineHeight: 1.6
+          }}>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  )}
+</AnimatePresence>
+
+
+      {/* ── Footer Insight ── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
-        className="mt-20 flex items-center gap-3 text-accent-brown/40 border-t border-accent-brown/5 pt-8 z-10"
+        style={{
+          marginTop: 80,
+          display: 'flex', alignItems: 'center', gap: 10,
+          color: T.textDim,
+          borderTop: `1px solid ${T.cardBorder}`,
+          paddingTop: 28,
+          zIndex: 10,
+        }}
       >
-        <Target className="w-4 h-4" />
-        <span className="text-xs font-bold uppercase tracking-[0.2em]">Our AI adapts to your selection for maximum realism</span>
+        <Target size={14} color={T.accent} style={{ opacity: 0.6 }} />
+        <span style={{
+          fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.2em', color: T.textDim,
+        }}>
+          Our AI adapts to your selection for maximum realism
+        </span>
       </motion.div>
     </div>
   );

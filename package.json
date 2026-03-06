@@ -19,7 +19,10 @@
     "@monaco-editor/react": "^4.7.0",
     "@stream-io/node-sdk": "^0.7.42",
     "@stream-io/video-react-sdk": "^1.32.4",
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.1",
+    "@tensorflow-models/blazeface": "^0.1.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "@vitejs/plugin-react": "^5.0.4",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.6",
@@ -37,6 +40,7 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.13.1",
     "recharts": "^3.7.0",
+    "tailwindcss": "^4.2.1",
     "ts-node": "^10.9.2",
     "vite": "^6.2.0"
   },
@@ -51,7 +55,6 @@
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.21",
     "stream-chat": "^9.35.1",
-    "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"

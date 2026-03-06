@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
+import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/clerk-react';
 import { motion, useScroll, useTransform } from 'motion/react';
-import RedirectToDashboard from '../components/RedirectToDashboard.js';
+import { useTheme } from "../lib/ThemeContext.js"; // homepage
 import DarkModeToggle from '../components/DarkModeToggle.js';
 import { CheckCircle2, Cpu, Video, Code, BarChart3, ArrowRight } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 
 const TypingEffect: React.FC<{ text: string; delay: number }> = ({ text, delay }) => {
   const [currentText, setCurrentText] = useState('');
@@ -20,15 +21,55 @@ const TypingEffect: React.FC<{ text: string; delay: number }> = ({ text, delay }
     }
   }, [currentIndex, delay, text]);
 
-  return <span>{currentText}</span>;
+  return (
+  <span>
+    {currentText}
+    <span className="animate-pulse">|</span>
+  </span>
+);
 };
 
 export default function HomePage() {
+  const { theme } = useTheme();
+const isDark = theme === "dark";
+  const { isSignedIn, isLoaded } = useUser();
+  const navigate = useNavigate();
+  const [triggerAnimation, setTriggerAnimation] = useState(false);
+
+  // ENTER key logic
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && isLoaded && isSignedIn) {
+        setTriggerAnimation(true);
+
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 800);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [isLoaded, isSignedIn, navigate]);
+
   const { scrollYProgress } = useScroll();
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '20%']);
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
 
   return (
-    <div className="min-h-screen bg-primary-bg font-body text-accent-brown selection:bg-accent-mocha/30 selection:text-accent-brown relative overflow-hidden dark:bg-gray-900 dark:text-primary-bg">
+    <motion.div
+  initial={{ y: 0 }}
+  animate={{ y: triggerAnimation ? "-100vh" : 0 }}
+  transition={{ duration: 0.8 }}
+  className="min-h-screen transition-colors duration-500"
+  style={{
+    backgroundColor: "var(--bg-color)",
+    color: "var(--text-color)",
+  }}
+>
+      {/* Your existing content continues here */}
       {/* Premium Animated Blobs */}
       <motion.div
         style={{ y: backgroundY }}
@@ -57,14 +98,19 @@ export default function HomePage() {
         className="absolute -bottom-40 -right-20 w-[600px] h-[600px] bg-accent-brown/10 rounded-full blur-[120px] pointer-events-none"
       />
 
-      <RedirectToDashboard />
+      
 
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-accent-brown/5 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-accent-brown rounded-12 flex items-center justify-center shadow-md-layer">
-            <Cpu className="text-primary-bg w-6 h-6" />
-          </div>
+          <motion.img
+  src={isDark ? "/logo-dark.png" : "/logo.png"}
+  alt="MockPrep Logo"
+  initial={{ opacity: 0, scale: 0.8, y: -10 }}
+  animate={{ opacity: 1, scale: 1, y: 0 }}
+  transition={{ duration: 0.8 }}
+  className="h-10 w-auto sm:h-12 md:h-14 object-contain transition-transform duration-300 hover:scale-105"
+/>
           <span className="text-2xl font-heading font-bold tracking-tight">MockPrep AI</span>
         </div>
         <div className="flex items-center gap-6">
@@ -102,17 +148,22 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className="text-6xl md:text-8xl font-heading text-accent-brown mb-8 leading-[1.1] dark:text-primary-bg"
+            className="text-6xl md:text-8xl font-heading mb-8 leading-[1.1]"
           >
-            Level up with <br />
-            <span className="text-gradient-brown"><TypingEffect text="MockPrep AI" delay={150} /></span>
+            <span className="block bg-gradient-to-r from-[#B8B8B8] via-[#E2E2E2] to-[#9E9E9E] bg-clip-text text-transparent">
+              Level up with
+            </span>
+
+            <span className="text-gradient-brown">
+              <TypingEffect text="MockPrep" delay={150} />
+            </span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl md:text-2xl text-gray-700/80 mb-12 max-w-3xl mx-auto dark:text-gray-300 antialiased font-light leading-relaxed"
+          className="text-xl md:text-2xl bg-gradient-to-r from-[#B8B8B8] via-[#E2E2E2] to-[#9E9E9E] bg-clip-text text-transparent mb-12 max-w-3xl mx-auto font-light leading-relaxed"
           >
             A premium, AI-driven experience designed to help you master technical, behavioral, and video interviews with confidence.
           </motion.p>
@@ -143,6 +194,11 @@ export default function HomePage() {
               Watch Demo
             </button>
           </motion.div>
+          <SignedIn>
+  <p className="mt-8 text-xs opacity-40 animate-pulse">
+    Press ENTER to continue to dashboard
+  </p>
+</SignedIn>
         </section>
 
         {/* Features Preview */}
@@ -156,7 +212,7 @@ export default function HomePage() {
             {
               icon: <Code className="w-6 h-6" />,
               title: "Technical Mock Tests",
-              desc: "Solve LeetCode-style problems in an elegant editor with real-time AI feedback."
+              desc: "Solve DSA problems in an elegant editor with real-time AI feedback."
             },
             {
               icon: <BarChart3 className="w-6 h-6" />,
@@ -187,6 +243,6 @@ export default function HomePage() {
       <footer className="relative z-10 py-12 border-t border-accent-brown/5 mt-20 text-center">
         <p className="text-sm opacity-50">&copy; 2026 MockPrep AI. All rights reserved.</p>
       </footer>
-    </div>
+    </motion.div>
   );
 }

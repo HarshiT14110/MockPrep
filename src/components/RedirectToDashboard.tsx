@@ -1,18 +1,18 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useUser } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
-const RedirectToDashboard: React.FC = () => {
+export default function RedirectToDashboard() {
+  const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
-  const { isSignedIn } = useAuth();
 
   useEffect(() => {
-    if (isSignedIn) {
-      navigate('/dashboard');
+    if (isLoaded && isSignedIn) {
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 800); // wait for animation
     }
-  }, [isSignedIn, navigate]);
+  }, [isLoaded, isSignedIn, navigate]);
 
-  return null; // This component doesn't render anything
-};
-
-export default RedirectToDashboard;
+  return null;
+}

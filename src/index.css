@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;700&display=swap');
 @import "tailwindcss";
 
+
 /* =========================
    Theme Variables (V4 Way)
 ========================= */
@@ -55,12 +56,13 @@ body::before {
 ========================= */
 
 .premium-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(6px);
-  border-radius: var(--radius-28);
-  box-shadow: var(--shadow-elegant);
-  border: 1px solid rgba(107, 79, 59, 0.05);
-  transition: all 300ms var(--ease-premium);
+  background-color: var(--card-bg);
+  color: var(--card-text);
+
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+
+  transition: all 0.35s ease;
 }
 
 .premium-card:hover {
@@ -142,3 +144,53 @@ body::before {
 .animate-wave1 { animation: wave1 1s infinite ease-in-out; }
 .animate-wave2 { animation: wave2 1s infinite ease-in-out; }
 .animate-wave3 { animation: wave3 1s infinite ease-in-out; }
+
+/* LIGHT THEME (default) */
+:root {
+  --bg-color: #F5EFE6;      /* beige */
+  --text-color: #6B4F3B;    /* brown */
+
+  --card-bg: #ffffff;
+  --card-text: #6B4F3B;
+
+  --muted-text: #8B6A55;
+  --border-color: #E5DED5;
+}
+
+/* DARK THEME (inverted) */
+.dark {
+  --bg-color: #6B4F3B;      /* brown */
+  --text-color: #F5EFE6;    /* beige */
+
+  --card-bg: #7A5C45;
+  --card-text: #F5EFE6;
+
+  --muted-text: #E5DED5;
+  --border-color: #8B6A55;
+}
+
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+
+
+
+.text-theme {
+  color: var(--text-color);
+}
+
+.text-muted {
+  color: var(--muted-text);
+}
+
+
+
+
+
+
+
+

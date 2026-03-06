@@ -9,7 +9,8 @@ import { clerkMiddleware, requireAuth, getAuth } from "@clerk/express";
 import multer from "multer";
 import pdfParse from "@cedrugs/pdf-parse";
 import cors from "cors";
-
+import Question from "./Question.model";
+import InterviewQuestion from "./InterviewQuestion.model";
 // ==============================
 // Fix __dirname for ESM
 // ==============================
@@ -33,6 +34,7 @@ mongoose
     console.error("❌ MongoDB Connection Error:", err);
     process.exit(1);
   });
+
 mongoose.set("returnDocument", "after");
 
 // ==============================
@@ -454,26 +456,7 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
                 }
               });
 
-  // ==============================
-  // Vite Middleware
-  // ==============================
-
-
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-      root: process.cwd(),
-    });
-
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.resolve(process.cwd(), "dist")));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.resolve(process.cwd(), "dist", "index.html"));
-    });
-  }
-
+ 
   // Result Analysis and Report Generation Route ---------------------------------
 
     app.post(
@@ -553,6 +536,93 @@ ${JSON.stringify(feedbackList)}
   }
 });
 
+
+    //Question Model Route  ==============================
+
+
+      app.get("/api/questions/random", async (req, res) => {
+  try {
+    const { topic, difficulty } = req.query;
+
+    if (!topic || !difficulty) {
+      return res.status(400).json({ message: "Missing filters" });
+    }
+
+    const count = await Question.countDocuments({
+      topic,
+      difficulty,
+    });
+
+    if (count === 0) {
+      return res.status(404).json({ message: "No questions found" });
+    }
+
+    const random = Math.floor(Math.random() * count);
+
+    const question = await Question.findOne({
+      topic,
+      difficulty,
+    }).skip(random);
+
+    res.json(question);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// HR/Behavioral Question Route  ==============================
+
+app.get("/api/interview-questions", requireAuth(), async (req, res) => {
+  try {
+    const { type } = req.query;
+
+    if (!type) {
+      return res.status(400).json({ error: "Interview type required" });
+    }
+
+    const questions = await InterviewQuestion.aggregate([
+      { $match: { type } },
+      { $sample: { size: 6 } }
+    ]);
+
+    res.json({
+      questions: questions.map(q => q.question)
+    });
+
+  } catch (err) {
+    console.error("Interview question error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/interview-questions/adaptive", requireAuth(), async (req, res) => {
+  try {
+
+    const { type, difficulty } = req.query;
+
+    if (!type) {
+      return res.status(400).json({ error: "Interview type required" });
+    }
+
+    const level = difficulty || "easy";
+
+    const question = await InterviewQuestion.aggregate([
+      { $match: { type, difficulty: level } },
+      { $sample: { size: 1 } }
+    ]);
+
+    res.json({
+      question: question[0]?.question
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
   // ==============================
   // Global Error Handler
   // ==============================
@@ -564,6 +634,28 @@ ${JSON.stringify(feedbackList)}
       details: err.message,
     });
   });
+
+
+  // ==============================
+  // Vite Middleware
+  // ==============================
+
+
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+      root: process.cwd(),
+    });
+
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.resolve(process.cwd(), "dist")));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.resolve(process.cwd(), "dist", "index.html"));
+    });
+  }
+
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
