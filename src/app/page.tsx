@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/clerk-react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useTheme } from "../lib/ThemeContext.js"; // homepage
-import DarkModeToggle from '../components/DarkModeToggle.js';
 import { CheckCircle2, Cpu, Video, Code, BarChart3, ArrowRight } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
@@ -32,6 +31,16 @@ const TypingEffect: React.FC<{ text: string; delay: number }> = ({ text, delay }
 export default function HomePage() {
   const { theme } = useTheme();
 const isDark = theme === "dark";
+// Force homepage to always stay in light mode
+useEffect(() => {
+
+  // force light theme
+  document.documentElement.classList.remove("dark")
+  document.documentElement.classList.add("light")
+
+  localStorage.setItem("theme","light")
+
+}, [])
   const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
   const [triggerAnimation, setTriggerAnimation] = useState(false);
@@ -104,7 +113,7 @@ const isDark = theme === "dark";
       <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-accent-brown/5 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <motion.img
-  src={isDark ? "/logo-dark.png" : "/logo.png"}
+  src={isDark ? "/dark-logo.png" : "/logo.png"}
   alt="MockPrep Logo"
   initial={{ opacity: 0, scale: 0.8, y: -10 }}
   animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -116,13 +125,11 @@ const isDark = theme === "dark";
         <div className="flex items-center gap-6">
           <SignedIn>
             <div className="flex items-center gap-4">
-              <DarkModeToggle />
               <UserButton />
             </div>
           </SignedIn>
           <SignedOut>
-            <DarkModeToggle />
-            <SignInButton mode="modal">
+          <SignInButton mode="modal">
               <button className="text-sm font-semibold hover:text-accent-mocha transition-colors cursor-pointer">
                 Sign In
               </button>

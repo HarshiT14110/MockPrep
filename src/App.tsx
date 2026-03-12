@@ -8,7 +8,7 @@ import LiveInterviewPage from './app/live-interview/page.js';
 import TechnicalInterviewPage from './app/technical-interview/page.js';
 import CodeEditorPage from './app/code-editor/page.js';
 import ResumeUploadPage from './app/resume-upload/page.js';
-
+import BecomeProPage from "./pages/BecomeProPage.js";
 import AnimatedBackground from './components/AnimatedBackground.js';
 import { ThemeProvider } from './lib/ThemeContext.js';
 
@@ -37,7 +37,7 @@ function AppRoutes() {
       <Route path="/live-interview" element={<SignedIn><LiveInterviewPage /></SignedIn>} />
       <Route path="/technical-interview" element={<SignedIn><TechnicalInterviewPage /></SignedIn>} />
       <Route path="/code-editor" element={<SignedIn><CodeEditorPage /></SignedIn>} />
-
+      <Route path="/become-pro" element={<BecomeProPage />} />  
       <Route path="/sign-in/*" element={<SignIn routing="path" path="/sign-in" />} />
       <Route path="/sign-up/*" element={<SignUp routing="path" path="/sign-up" />} />
 

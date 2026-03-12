@@ -189,8 +189,18 @@ body {
 
 
 
+@font-face {
+  font-family: "Spotlight";
+  src: url("/src/assets/fonts/Spotlight.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 
-
-
+@font-face {
+  font-family: "AngelRhapsody";
+  src: url("/src/assets/fonts/AngelRhapsodyRegular-ZVGJz.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 
 

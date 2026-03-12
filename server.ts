@@ -42,13 +42,30 @@ mongoose.set("returnDocument", "after");
 // ==============================
 
 interface IUser extends Document {
+
   clerk_user_id: string;
+
   name?: string;
   email?: string;
   image?: string;
+
   createdAt: Date;
+
   resume_text?: string;
   completed_sessions?: number;
+
+  // Bits system
+  bits?: number;
+  plan?: "free" | "pro";
+  requests_today?: number;
+  last_request_date?: Date;
+
+  // ATS
+  ats_score?: number;
+  ats_summary?: string;
+  ats_missing_keywords?: string[];
+  ats_detected_skills?: string[];
+  ats_improvements?: string[];
 }
 
 // ==============================
@@ -61,11 +78,75 @@ const userSchema: Schema<IUser> = new Schema({
   email: String,
   image: String,
   createdAt: { type: Date, default: Date.now },
+
   resume_text: String,
   completed_sessions: { type: Number, default: 0 },
+
+bits: { type: Number, default: 96 },
+
+plan: { type: String, enum: ["free", "pro"], default: "free" },
+
+requests_today: { type: Number, default: 0 },
+
+last_request_date: { type: Date, default: Date.now },
+
+  ats_score: Number,
+  ats_summary: String,
+  ats_missing_keywords: [String],
+  ats_detected_skills: [String],
+  ats_improvements: [String],
 });
 
 const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+
+
+
+// ==============================
+// Bit Deduction Function
+// ==============================
+
+async function deductBits(userId: string, cost: number) {
+
+  const user = await User.findOne({ clerk_user_id: userId }).exec();
+
+  if (!user) return false;
+
+  // FREE PLAN
+  if (user?.plan === "free") {
+
+  const today = new Date().toDateString();
+
+  const last = user.last_request_date
+    ? new Date(user.last_request_date).toDateString()
+    : "";
+
+    // reset daily usage
+    if (today !== last) {
+      user.requests_today = 0;
+      user.last_request_date = new Date();
+    }
+
+    if ((user.requests_today ?? 0) + cost > 12) {
+      return false;
+    }
+
+    user.requests_today = (user.requests_today ?? 0) + cost;
+
+    await user.save();
+    return true;
+  }
+
+  // PRO PLAN
+
+  if ((user.bits || 0) < cost) {
+    return false;
+  }
+
+  user.bits = (user.bits || 0) - cost;
+
+  await user.save();
+  return true;
+}
 
 // ==============================
 // Start Server
@@ -122,13 +203,21 @@ async function startServer() {
       await User.findOneAndUpdate(
   { clerk_user_id: userId },
   {
-    clerk_user_id: userId,
-    name,
-    email,
-    image,
+    $set: {
+      clerk_user_id: userId,
+      name,
+      email,
+      image
+    },
+    $setOnInsert: {
+      bits: 96,
+      plan: "free",
+      requests_today: 0,
+      last_request_date: new Date()
+    }
   },
   { upsert: true, new: true }
-);
+); res.json({ User });
 
       res.json({ User });
     } catch (err) {
@@ -138,21 +227,75 @@ async function startServer() {
   });
 
   // ==============================
-  // Dashboard Route
-  // ==============================
+// Dashboard Route
+// ==============================
 
-  app.get("/api/dashboard-data", requireAuth(), async (req, res) => {
-    try {
-      const { userId } = getAuth(req);
-      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+app.get("/api/dashboard-data", requireAuth(), async (req, res) => {
 
-      const user = await User.findOne({ clerk_user_id: userId });
-      res.json({ user });
-    } catch (err) {
-      console.error("Dashboard error:", err);
-      res.status(500).json({ error: "Server error" });
+  try {
+
+    const { userId } = getAuth(req);
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
-  });
+
+    const user = await User.findOne({ clerk_user_id: userId });
+
+    if (!user) {
+      return res.json({ user: null });
+    }
+
+    // ==============================
+    // FREE PLAN LOGIC
+    // ==============================
+
+    if (user?.plan === "free") {
+
+  const today = new Date().toDateString();
+
+  const last = user.last_request_date
+    ? new Date(user.last_request_date).toDateString()
+    : ""; 
+
+      // Reset daily usage if new day
+
+      if (today !== last) {
+
+        user.requests_today = 0;
+        user.last_request_date = new Date();
+
+        await user.save();
+      }
+
+      const usedToday = user.requests_today ?? 0;
+
+const remainingBits = Math.max(12 - usedToday, 0);
+
+      return res.json({
+        user: {
+          ...user.toObject(),
+          bits: remainingBits
+        }
+      });
+
+    }
+
+    // ==============================
+    // PRO PLAN LOGIC
+    // ==============================
+
+    return res.json({ user });
+
+  } catch (err) {
+
+    console.error("Dashboard error:", err);
+
+    res.status(500).json({ error: "Server error" });
+
+  }
+
+});
 
   // ==============================
   // Stream Token Route
@@ -215,8 +358,17 @@ async function startServer() {
       const extractedText = data.text;
 
       const updatedUser = await User.findOneAndUpdate(
-        { clerk_user_id: userId },
-        { resume_text: extractedText },
+  { clerk_user_id: userId },
+  {
+    resume_text: extractedText,
+
+    // reset ATS cache when resume changes
+    ats_score: undefined,
+    ats_summary: undefined,
+    ats_missing_keywords: undefined,
+    ats_detected_skills: undefined,
+    ats_improvements: undefined
+  },
         { upsert: true, returnDocument: "after" }
       );
 
@@ -248,6 +400,15 @@ async function startServer() {
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+
+    const allowed = await deductBits(userId, 3);
+
+if (!allowed) {
+ return res.status(403).json({
+  error: "Not enough Bits",
+  code: "BITS_EXHAUSTED"
+});
+}
 
     const user = await User.findOne({ clerk_user_id: userId });
     const resumeText = user?.resume_text || "";
@@ -402,8 +563,28 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
                   const { userId } = getAuth(req);
                   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-                  const user = await User.findOne({ clerk_user_id: userId });
+                  const allowed = await deductBits(userId, 2);
+
+if (!allowed) {
+  return res.status(403).json({
+    error: "Not enough Bits"
+  });
+}
+
+                 const user = await User.findOne({ clerk_user_id: userId });
                   const resumeText = user?.resume_text;
+
+                  // ✅ Return cached ATS score if already exists
+
+                  if (user?.ats_score) {
+                    return res.json({
+                      score: user.ats_score,
+                      summary: user.ats_summary,
+                      missing_keywords: user.ats_missing_keywords,
+                      detected_skills: user.ats_detected_skills,
+                      improvements: user.ats_improvements
+                    });
+                  }
 
                   if (!resumeText) {
                     return res.json({ score: 0, summary: "No resume uploaded." });
@@ -415,16 +596,24 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
                   }
 
                   const prompt = `
-              Analyze this resume and give an ATS score out of 100.
-              Return only JSON:
-              {
-                "score": 78,
-                "summary": "short explanation"
-              }
+                    You are an ATS resume analyzer.
 
-              Resume:
-              ${resumeText}
-              `;
+                    Analyze the resume and return structured ATS analysis.
+
+                    Return ONLY JSON:
+
+                    {
+                      "score": 78,
+                      "summary": "short explanation",
+                      "missing_keywords": ["keyword1","keyword2"],
+                      "detected_skills": ["skill1","skill2"],
+                      "improvements": ["improvement1","improvement2"]
+                    }
+
+                    Resume:
+                    ${resumeText}
+                    `;
+                  
 
                   const response = await fetch(
                     `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -442,11 +631,30 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
                   const cleaned = raw.replace(/```json|```/g, "").trim();
                   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
-                  let result = { score: 0, summary: "" };
+                  let result = {
+                    score: 0,
+                    summary: "",
+                    missing_keywords: [],
+                    detected_skills: [],
+                    improvements: []
+                  };
 
                   if (jsonMatch) {
                     result = JSON.parse(jsonMatch[0]);
                   }
+
+                  // ✅ Save ATS result in MongoDB
+
+                await User.findOneAndUpdate(
+                  { clerk_user_id: userId },
+                  {
+                    ats_score: result.score,
+                    ats_summary: result.summary,
+                    ats_missing_keywords: result.missing_keywords,
+                    ats_detected_skills: result.detected_skills,
+                    ats_improvements: result.improvements
+                  }
+                );
 
                   res.json(result);
 
@@ -466,6 +674,14 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const allowed = await deductBits(userId, 5);
+
+if (!allowed) {
+  return res.status(403).json({
+    error: "Not enough Bits"
+  });
+}
 
     const { feedbackList } = req.body;
 
@@ -620,6 +836,86 @@ app.get("/api/interview-questions/adaptive", requireAuth(), async (req, res) => 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+// ==============================
+// Chatbot Route
+// ==============================
+
+app.post("/api/chatbot", requireAuth(), async (req, res) => {
+  try {
+
+   const { userId } = getAuth(req);
+
+if (!userId) {
+  return res.status(401).json({ error: "Unauthorized" });
+}
+    const allowed = await deductBits(userId, 1);
+
+if (!allowed) {
+  return res.status(403).json({
+    error: "Not enough Bits"
+  });
+}
+    
+
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: "Message required" });
+    }
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+    const prompt = `
+You are Mocksy, an interview preparation assistant.
+
+Formatting Rules:
+- Use short paragraphs
+- Use bullet points where appropriate
+- Separate sections with line breaks
+- Never return one long paragraph
+- Keep answers structured and easy to read
+
+User Question:
+${message}
+`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    let reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "AI could not generate response.";
+
+    // Clean formatting artifacts
+    reply = reply.replace(/```/g, "").trim();
+
+    res.json({ reply });
+
+  } catch (err) {
+    console.error("Chatbot error:", err);
+    res.status(500).json({ error: "Chatbot failed" });
   }
 });
 

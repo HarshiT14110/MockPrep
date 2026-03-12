@@ -10,15 +10,20 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>("light");
 
-  useEffect(() => {
+  const getInitialTheme = (): Theme => {
     const savedTheme = localStorage.getItem("theme") as Theme | null;
 
-    if (savedTheme) {
-      setTheme(savedTheme);
+    if (savedTheme) return savedTheme;
+
+    if (window.location.pathname === "/") {
+      return "light";
     }
-  }, []);
+
+    return "dark";
+  };
+
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
     if (theme === "dark") {
