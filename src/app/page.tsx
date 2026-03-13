@@ -5,6 +5,8 @@ import { motion, useScroll, useTransform } from 'motion/react';
 import { useTheme } from "../lib/ThemeContext.js"; // homepage
 import { CheckCircle2, Cpu, Video, Code, BarChart3, ArrowRight } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png"
+import darkLogo from "../assets/dark-logo.png"
 
 const TypingEffect: React.FC<{ text: string; delay: number }> = ({ text, delay }) => {
   const [currentText, setCurrentText] = useState('');
@@ -32,15 +34,7 @@ export default function HomePage() {
   const { theme } = useTheme();
 const isDark = theme === "dark";
 // Force homepage to always stay in light mode
-useEffect(() => {
 
-  // force light theme
-  document.documentElement.classList.remove("dark")
-  document.documentElement.classList.add("light")
-
-  localStorage.setItem("theme","light")
-
-}, [])
   const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
   const [triggerAnimation, setTriggerAnimation] = useState(false);
@@ -72,11 +66,11 @@ useEffect(() => {
   initial={{ y: 0 }}
   animate={{ y: triggerAnimation ? "-100vh" : 0 }}
   transition={{ duration: 0.8 }}
-  className="min-h-screen transition-colors duration-500"
+  className="min-h-screen w-screen overflow-x-hidden transition-colors duration-500"
   style={{
-    backgroundColor: "var(--bg-color)",
-    color: "var(--text-color)",
-  }}
+  backgroundColor: isDark ? "#130f09" : "var(--bg-color)",
+  color: isDark ? "#f5e6c8" : "var(--text-color)",
+}}
 >
       {/* Your existing content continues here */}
       {/* Premium Animated Blobs */}
@@ -91,7 +85,9 @@ useEffect(() => {
           repeat: Infinity,
           ease: "linear"
         }}
-        className="absolute -top-20 -left-20 w-[500px] h-[500px] bg-accent-mocha/20 rounded-full blur-[100px] pointer-events-none"
+        className={`absolute -top-20 -left-20 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${
+isDark ? "bg-[#c9820a]/20" : "bg-accent-mocha/20"
+}`}
       />
       <motion.div
         style={{ y: backgroundY }}
@@ -104,23 +100,31 @@ useEffect(() => {
           repeat: Infinity,
           ease: "linear"
         }}
-        className="absolute -bottom-40 -right-20 w-[600px] h-[600px] bg-accent-brown/10 rounded-full blur-[120px] pointer-events-none"
+        className={`absolute -bottom-40 -right-20 w-[600px] h-[600px] rounded-full blur-[140px] pointer-events-none ${
+isDark ? "bg-[#c9820a]/10" : "bg-accent-brown/10"
+}`}
       />
 
       
 
       {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-accent-brown/5 px-8 py-4 flex justify-between items-center">
+      <nav
+className="fixed top-0 left-0 right-0 z-50 px-8 py-4 flex justify-between items-center"
+style={{
+background: isDark ? "rgba(28,20,9,0.9)" : "",
+borderBottom: isDark ? "1px solid rgba(201,130,10,0.15)" : ""
+}}
+>
         <div className="flex items-center gap-2">
           <motion.img
-  src={isDark ? "/dark-logo.png" : "/logo.png"}
+  src={isDark ? darkLogo : logo}
   alt="MockPrep Logo"
   initial={{ opacity: 0, scale: 0.8, y: -10 }}
   animate={{ opacity: 1, scale: 1, y: 0 }}
   transition={{ duration: 0.8 }}
   className="h-10 w-auto sm:h-12 md:h-14 object-contain transition-transform duration-300 hover:scale-105"
 />
-          <span className="text-2xl font-heading font-bold tracking-tight">MockPrep AI</span>
+          <span className={`text-2xl font-heading font-bold tracking-tight ${isDark ? "text-[#f5e6c8]" : ""}`}>MockPrep</span>
         </div>
         <div className="flex items-center gap-6">
           <SignedIn>
@@ -138,7 +142,7 @@ useEffect(() => {
         </div>
       </nav>
 
-      <main className="relative z-10 pt-32 pb-20 px-8 flex flex-col items-center">
+      <main className="relative z-10 pt-32 pb-20 px-8 flex flex-col items-center overflow-hidden">
         {/* Hero Section */}
         <section className="max-w-5xl mx-auto text-center mb-24">
           <motion.div
@@ -157,7 +161,13 @@ useEffect(() => {
             transition={{ duration: 1, ease: "easeOut" }}
             className="text-6xl md:text-8xl font-heading mb-8 leading-[1.1]"
           >
-            <span className="block bg-gradient-to-r from-[#B8B8B8] via-[#E2E2E2] to-[#9E9E9E] bg-clip-text text-transparent">
+            <span
+className={`block bg-clip-text text-transparent ${
+isDark
+? "bg-gradient-to-r from-[#f5e6c8] via-[#e7d7b2] to-[#c9820a]"
+: "bg-gradient-to-r from-[#B8B8B8] via-[#E2E2E2] to-[#9E9E9E]"
+}`}
+>
               Level up with
             </span>
 
@@ -233,7 +243,11 @@ useEffect(() => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.2 }}
-              className="premium-card p-10 flex flex-col items-center text-center group"
+              className={`p-10 flex flex-col items-center text-center group rounded-2xl border transition-all
+${isDark
+? "bg-[#1e1710] border-[#3b2a16]"
+: "premium-card"
+}`}
             >
               <div className="w-14 h-14 bg-accent-brown/5 rounded-20 flex items-center justify-center mb-6 group-hover:bg-accent-brown group-hover:text-primary-bg transition-colors duration-500">
                 {feature.icon}
@@ -247,9 +261,16 @@ useEffect(() => {
         </section>
       </main>
 
-      <footer className="relative z-10 py-12 border-t border-accent-brown/5 mt-20 text-center">
-        <p className="text-sm opacity-50">&copy; 2026 MockPrep AI. All rights reserved.</p>
-      </footer>
+     <footer
+className="relative z-10 py-6 mt-16 text-center w-full"
+style={{
+borderTop: "1px solid rgba(201,130,10,0.15)",
+color: "#f5e6c8aa",
+background: "#130f09"
+}}
+>
+© {new Date().getFullYear()} MockPrep AI
+</footer>
     </motion.div>
   );
 }

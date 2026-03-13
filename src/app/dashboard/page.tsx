@@ -20,6 +20,7 @@ import AnimatedBackground from "../../components/AnimatedBackground.js";
 import DashboardScrollHero from "../../components/dashboard/DashboardScrollHero.js";
 import AIChatbot from "../../components/dashboard/AIChatbot.js"
   import { useScroll } from "motion/react"
+  import Footer from "../../components/Footer.js"
 
 const DARK = {
   pageBg:       '#130f09',
@@ -1187,6 +1188,8 @@ WebkitBackdropFilter: "blur(20px)", border: `1px solid ${T.accentBorder}` }}>
           </div>
           
         </main>
+        <Footer T={T} isDark={isDark} />
+
         <AIChatbot />
         <AnimatePresence>
 
