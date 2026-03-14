@@ -1,48 +1,91 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut, SignIn, SignUp } from '@clerk/clerk-react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-import HomePage from './app/page.js';
-import DashboardPage from './app/dashboard/page.js';
-import InterviewTypeSelectionPage from './app/interview-type-selection/page.js';
-import LiveInterviewPage from './app/live-interview/page.js';
-import TechnicalInterviewPage from './app/technical-interview/page.js';
-import CodeEditorPage from './app/code-editor/page.js';
-import ResumeUploadPage from './app/resume-upload/page.js';
+import HomePage from "./app/page.js";
+import DashboardPage from "./app/dashboard/page.js";
+import InterviewTypeSelectionPage from "./app/interview-type-selection/page.js";
+import LiveInterviewPage from "./app/live-interview/page.js";
+import TechnicalInterviewPage from "./app/technical-interview/page.js";
+import CodeEditorPage from "./app/code-editor/page.js";
+import ResumeUploadPage from "./app/resume-upload/page.js";
 import BecomeProPage from "./pages/BecomeProPage.js";
-import AnimatedBackground from './components/AnimatedBackground.js';
-import { ThemeProvider } from './lib/ThemeContext.js';
+import AnimatedBackground from "./components/AnimatedBackground.js";
+import { ThemeProvider } from "./lib/ThemeContext.js";
+import AuthSuccess from "./app/auth-success/page.js";
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/" />;
+  }
+
+  return children;
+}
 
 function AppRoutes() {
   return (
     <Routes>
-
       <Route path="/" element={<HomePage />} />
 
       <Route
         path="/dashboard"
         element={
-          <>
-            <SignedIn>
-              <DashboardPage />
-            </SignedIn>
-            <SignedOut>
-              <Navigate to="/" />
-            </SignedOut>
-          </>
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
         }
       />
 
-      <Route path="/interview-type-selection" element={<SignedIn><InterviewTypeSelectionPage /></SignedIn>} />
-      <Route path="/resume-upload" element={<SignedIn><ResumeUploadPage /></SignedIn>} />
-      <Route path="/live-interview" element={<SignedIn><LiveInterviewPage /></SignedIn>} />
-      <Route path="/technical-interview" element={<SignedIn><TechnicalInterviewPage /></SignedIn>} />
-      <Route path="/code-editor" element={<SignedIn><CodeEditorPage /></SignedIn>} />
-      <Route path="/become-pro" element={<BecomeProPage />} />  
-      <Route path="/sign-in/*" element={<SignIn routing="path" path="/sign-in" />} />
-      <Route path="/sign-up/*" element={<SignUp routing="path" path="/sign-up" />} />
+      <Route
+        path="/interview-type-selection"
+        element={
+          <ProtectedRoute>
+            <InterviewTypeSelectionPage />
+          </ProtectedRoute>
+        }
+      />
+
+        <Route path="/auth-success" element={<AuthSuccess />} />
+
+      <Route
+        path="/resume-upload"
+        element={
+          <ProtectedRoute>
+            <ResumeUploadPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/live-interview"
+        element={
+          <ProtectedRoute>
+            <LiveInterviewPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/technical-interview"
+        element={
+          <ProtectedRoute>
+            <TechnicalInterviewPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/code-editor"
+        element={
+          <ProtectedRoute>
+            <CodeEditorPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/become-pro" element={<BecomeProPage />} />
 
       <Route path="*" element={<Navigate to="/" />} />
-
     </Routes>
   );
 }

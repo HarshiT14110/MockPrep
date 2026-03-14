@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 
 /* ════════════════════════════════════════
    DESIGN TOKENS  (warm espresso + amber-gold)
@@ -33,7 +32,7 @@ export default function ResumeUploadPage() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [dragOver, setDragOver]           = useState(false);
-  const { user }                          = useUser();
+  const token = localStorage.getItem("token");
   const searchParams                      = useSearchParams()[0];
   const navigate                          = useNavigate();
   const interviewType                     = searchParams.get('type') || 'general';
@@ -76,28 +75,41 @@ export default function ResumeUploadPage() {
   const handleDragLeave = () => setDragOver(false);
 
   const handleUpload = async () => {
-    if (!selectedFile || !user) {
-      setError('Please select a file and ensure you are logged in.');
-      return;
-    }
-    setIsUploading(true);
-    setError(null);
-    setUploadSuccess(false);
-    try {
-      const formData = new FormData();
-      formData.append('resume', selectedFile);
-      const response = await fetch("/api/upload-resume", { method: 'POST', body: formData });
-      if (!response.ok) throw new Error('Failed to parse resume on the server.');
-      const data = await response.json();
-      const extractedText: string = data?.text || "";
-      setUploadSuccess(true);
-    } catch (err) {
-      console.error('Resume processing error:', err);
-      setError('Failed to upload/parse resume. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  if (!selectedFile || !token) {
+    setError('Please select a file and ensure you are logged in.');
+    return;
+  }
+
+  setIsUploading(true);
+  setError(null);
+  setUploadSuccess(false);
+
+  try {
+    const formData = new FormData();
+    formData.append("resume", selectedFile);
+
+    const response = await fetch("/api/upload-resume", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) throw new Error("Upload failed");
+
+    const data = await response.json();
+    const extractedText: string = data?.text || "";
+
+    setUploadSuccess(true);
+
+  } catch (err) {
+    console.error("Resume processing error:", err);
+    setError("Failed to upload/parse resume. Please try again.");
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   return (
     <div style={{

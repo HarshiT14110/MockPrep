@@ -13,7 +13,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'import.meta.env.VITE_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY': JSON.stringify(env.VITE_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY),
       'import.meta.env.VITE_INNGEST_EVENT_KEY': JSON.stringify(env.VITE_INNGEST_EVENT_KEY),
       'process.env.STREAM_API_KEY': JSON.stringify(env.STREAM_API_KEY),
       'process.env.STREAM_SECRET_KEY': JSON.stringify(env.STREAM_SECRET_KEY),

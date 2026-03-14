@@ -3,27 +3,31 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Briefcase, Users, Code, ChevronRight, Sparkles, Target, BrainCircuit} from 'lucide-react';
 import Logo from "../../components/Logo.js";
+import "../../index.css";
 
 /* ════════════════════════════════════════
    DESIGN TOKENS  (warm espresso + amber-gold)
    Matches dashboard theme — no Tailwind
 ════════════════════════════════════════ */
 const T = {
-  pageBg:       '#130f09',
-  cardBg:       '#1e1710',
-  cardBorder:   'rgba(255,200,100,0.07)',
-  cardActive:   'rgba(201,130,10,0.18)',
-  cardActiveBorder: '#c9820a',
-  accent:       '#c9820a',
-  accentSoft:   'rgba(201,130,10,0.14)',
-  accentBorder: 'rgba(201,130,10,0.24)',
-  accentGlow:   'rgba(201,130,10,0.10)',
-  text:         '#f5e6c8',
-  textMuted:    'rgba(245,230,200,0.40)',
-  textDim:      'rgba(245,230,200,0.18)',
-  white:        '#fff',
-};
+  pageBg: "var(--bg-color)",
+  cardBg: "var(--card-bg)",
+  cardBorder: "var(--border-color)",
 
+  cardActive: "rgba(107,79,59,0.15)",
+  cardActiveBorder: "var(--color-accent-brown)",
+
+  accent: "var(--color-accent-brown)",
+  accentSoft: "rgba(107,79,59,0.15)",
+  accentBorder: "rgba(107,79,59,0.3)",
+  accentGlow: "rgba(107,79,59,0.12)",
+
+  text: "var(--text-color)",
+  textMuted: "var(--muted-text)",
+  textDim: "rgba(0,0,0,0.35)",
+
+  white: "#fff"
+};
 /* ════ Interfaces (original – untouched) ════ */
 interface InterviewCardProps {
   title: string;
@@ -60,10 +64,10 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
         background: isActive ? T.cardActive : T.cardBg,
         border: `2px solid ${isActive ? T.cardActiveBorder : T.cardBorder}`,
         boxShadow: isActive
-          ? `0 0 40px ${T.accent}22, 0 8px 32px rgba(0,0,0,0.4)`
+  ? `var(--shadow-lg-layer)`
           : hov
-            ? `0 8px 32px rgba(0,0,0,0.3)`
-            : `0 2px 12px rgba(0,0,0,0.2)`,
+  ? `var(--shadow-md-layer)`
+  : `var(--shadow-sm-layer)`,
         transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
         overflow: 'hidden',
       }}
@@ -135,7 +139,7 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
                 style={{
                   width: '100%', padding: '14px 0',
                   borderRadius: 14, border: 'none',
-                  background: `linear-gradient(135deg, ${T.accent} 0%, #9a5806 100%)`,
+                  background: `linear-gradient(135deg, var(--color-accent-brown), var(--color-accent-mocha))`,
                   color: '#fff', fontWeight: 700, fontSize: 15,
                   cursor: 'pointer', letterSpacing: '0.02em',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -229,7 +233,7 @@ const previewContent: Record<string, string[]> = {
       alignItems: 'center',
       position: 'relative',
       overflow: 'hidden',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'Inter, system-ui, sans-serif',
       boxSizing: 'border-box',
     }}>
 
@@ -237,13 +241,13 @@ const previewContent: Record<string, string[]> = {
       <div style={{
         position: 'absolute', top: 0, left: '25%',
         width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(201,130,10,0.07) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(107,79,59,0.15) 0%, transparent 70%)',
         pointerEvents: 'none', filter: 'blur(40px)',
       }} />
       <div style={{
         position: 'absolute', bottom: 0, right: '25%',
         width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(201,130,10,0.05) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(107,79,59,0.15) 0%, transparent 70%)',
         pointerEvents: 'none', filter: 'blur(40px)',
       }} />
 
@@ -290,7 +294,7 @@ const previewContent: Record<string, string[]> = {
           Choose Your{' '}
           <span style={{
             color: T.accent,
-            textShadow: `0 0 40px ${T.accent}44`,
+            textShadow: `0 0 40px var(--color-accent-brown)44`,
           }}>
             Expedition
           </span>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { UserButton, useUser, useAuth } from '@clerk/clerk-react';
+import { Link } from 'react-router-dom';  
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid
@@ -165,8 +164,9 @@ const TopicPill: React.FC<{ topic: string; active: boolean; onClick: () => void;
 );
 
 export default function DashboardPage() {
-  const { user: clerkUser, isSignedIn } = useUser();
-  const { getToken } = useAuth();
+
+  const token = localStorage.getItem("token");
+  const isSignedIn = !!token;
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +214,7 @@ const handleCheckATS = async () => {
 
     setAtsLoading(true);
 
-    const token = await getToken();
+    const token = localStorage.getItem("token");
 
     const res = await fetch("/api/ats-score", {
       method: "POST",
@@ -255,10 +255,13 @@ const handleCheckATS = async () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!isSignedIn || !clerkUser) { setLoading(false); return; }
+      if (!isSignedIn) {
+  setLoading(false);
+  return;
+}
       setLoading(true); setError(null);
       try {
-        const token = await getToken();
+        const token = localStorage.getItem("token");
         const response = await fetch('/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) throw new Error(`Failed to fetch dashboard data: ${response.status}`);
         const data = await response.json();
@@ -291,7 +294,7 @@ const handleCheckATS = async () => {
       } finally { setLoading(false); }
     };
     fetchDashboardData();
-  }, [isSignedIn, clerkUser]);
+  }, [isSignedIn]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, background: DARK.pageBg }}>
@@ -435,7 +438,23 @@ gap: 16
 
 <DarkModeToggle />
 
-<UserButton />
+<button
+  onClick={() => {
+    localStorage.removeItem("token");
+    window.location.href = "/";
+  }}
+  style={{
+    padding: "6px 12px",
+    fontSize: 11,
+    borderRadius: 8,
+    border: `1px solid ${T.accentBorder}`,
+    background: T.accentSoft,
+    color: T.text,
+    cursor: "pointer"
+  }}
+>
+Logout
+</button>
 
 </motion.div>
 
@@ -945,11 +964,11 @@ alignItems: "start"
       {userProfile?.plan === "pro" && (
         <span style={{ marginRight: 6 }}>👑</span>
       )}
-      {userProfile?.name || clerkUser?.fullName || "Not Available"}
+      {userProfile?.name || "Not Available"}
     </>
   )
 },
-  { label: 'Email', value: userProfile?.email || clerkUser?.primaryEmailAddress?.emailAddress || "Not Available" },
+  { label: 'Email', value: userProfile?.email || "Not Available" },
   { label: 'Member Since', value: userProfile?.createdAt ? new Date(userProfile.createdAt).toDateString() : "N/A" },
   { label: 'Sessions', value: String(userProfile?.completed_sessions || 0) },
 ].map(({ label, value }, i) => (

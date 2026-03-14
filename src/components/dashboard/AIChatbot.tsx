@@ -3,9 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { Bot, Send, X } from "lucide-react"
-import { useAuth } from "@clerk/clerk-react"
-export default function AIChatbot() {
-const { getToken } = useAuth()
+export default function AIChatbot() {const token = localStorage.getItem("token");
 const [open , setOpen] = useState(false)
 const [messages,setMessages] = useState([
 {role:"assistant",content:"Hi 👋 I'm Mocksy. Ask me anything about interviews, resume, or preparation."}
@@ -25,8 +23,7 @@ setInput("")
 setLoading(true)
 
 try{
-
-const token = await getToken()
+const token = localStorage.getItem("token");
 
 const res = await fetch("/api/chatbot", {
   method: "POST",

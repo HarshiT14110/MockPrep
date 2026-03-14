@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/clerk-react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useTheme } from "../lib/ThemeContext.js"; // homepage
-import { CheckCircle2, Cpu, Video, Code, BarChart3, ArrowRight } from 'lucide-react';
+import {  Video, Code, BarChart3, ArrowRight } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png"
 import darkLogo from "../assets/dark-logo.png"
@@ -35,7 +34,9 @@ export default function HomePage() {
 const isDark = theme === "dark";
 // Force homepage to always stay in light mode
 
-  const { isSignedIn, isLoaded } = useUser();
+  const token = localStorage.getItem("token");
+const isSignedIn = !!token;
+const isLoaded = true;
   const navigate = useNavigate();
   const [triggerAnimation, setTriggerAnimation] = useState(false);
 
@@ -66,7 +67,7 @@ const isDark = theme === "dark";
   initial={{ y: 0 }}
   animate={{ y: triggerAnimation ? "-100vh" : 0 }}
   transition={{ duration: 0.8 }}
-  className="min-h-screen w-screen overflow-x-hidden transition-colors duration-500"
+  className="min-h-screen w-full overflow-x-hidden transition-colors duration-500"
   style={{
   backgroundColor: isDark ? "#130f09" : "var(--bg-color)",
   color: isDark ? "#f5e6c8" : "var(--text-color)",
@@ -109,7 +110,7 @@ isDark ? "bg-[#c9820a]/10" : "bg-accent-brown/10"
 
       {/* Header */}
       <nav
-className="fixed top-0 left-0 right-0 z-50 px-8 py-4 flex justify-between items-center"
+className="fixed top-0 left-0 right-0 z-50 px-8 py-5 flex justify-between items-center backdrop-blur-md"
 style={{
 background: isDark ? "rgba(28,20,9,0.9)" : "",
 borderBottom: isDark ? "1px solid rgba(201,130,10,0.15)" : ""
@@ -127,22 +128,28 @@ borderBottom: isDark ? "1px solid rgba(201,130,10,0.15)" : ""
           <span className={`text-2xl font-heading font-bold tracking-tight ${isDark ? "text-[#f5e6c8]" : ""}`}>MockPrep</span>
         </div>
         <div className="flex items-center gap-6">
-          <SignedIn>
-            <div className="flex items-center gap-4">
-              <UserButton />
-            </div>
-          </SignedIn>
-          <SignedOut>
-          <SignInButton mode="modal">
-              <button className="text-sm font-semibold hover:text-accent-mocha transition-colors cursor-pointer">
-                Sign In
-              </button>
-            </SignInButton>
-          </SignedOut>
+          {isSignedIn ? (
+  <button
+    onClick={() => {
+      localStorage.removeItem("token");
+      window.location.reload();
+    }}
+  >
+    Logout
+  </button>
+) : (
+  <button
+    onClick={() => {
+      window.location.href = "http://localhost:3000/auth/google";
+    }}
+  >
+    Sign in with Google
+  </button>
+)}
         </div>
       </nav>
 
-      <main className="relative z-10 pt-32 pb-20 px-8 flex flex-col items-center overflow-hidden">
+      <main className="relative z-10 pt-40 pb-20 px-8 flex flex-col items-center overflow-hidden">
         {/* Hero Section */}
         <section className="max-w-5xl mx-auto text-center mb-24">
           <motion.div
@@ -191,31 +198,32 @@ isDark
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-6 justify-center"
           >
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="premium-button-primary group inline-flex items-center gap-2">
-                  Get Started Free
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <Link to="/dashboard">
-                <button className="premium-button-primary group inline-flex items-center gap-2">
-                  Go to Dashboard
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
-              </Link>
-            </SignedIn>
+            {!isSignedIn ? (
+  <button
+  onClick={() => {
+    window.location.href = "http://localhost:3000/auth/google";
+  }}
+  className="px-4 py-2 rounded-lg bg-[#c9820a] text-white font-medium hover:opacity-90 transition"
+>
+  Sign in with Google
+</button>
+) : (
+  <Link to="/dashboard">
+    <button className="premium-button-primary group inline-flex items-center gap-2">
+      Go to Dashboard
+      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+    </button>
+  </Link>
+)}
             <button className="premium-button-secondary">
               Watch Demo
             </button>
           </motion.div>
-          <SignedIn>
+          {isSignedIn && (
   <p className="mt-8 text-xs opacity-40 animate-pulse">
     Press ENTER to continue to dashboard
   </p>
-</SignedIn>
+)}
         </section>
 
         {/* Features Preview */}
@@ -249,7 +257,7 @@ ${isDark
 : "premium-card"
 }`}
             >
-              <div className="w-14 h-14 bg-accent-brown/5 rounded-20 flex items-center justify-center mb-6 group-hover:bg-accent-brown group-hover:text-primary-bg transition-colors duration-500">
+              <div className="w-14 h-14 bg-accent-brown/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-accent-brown group-hover:text-primary-bg transition-colors duration-500">
                 {feature.icon}
               </div>
               <h3 className="text-2xl font-heading font-bold mb-4">{feature.title}</h3>
@@ -262,7 +270,7 @@ ${isDark
       </main>
 
      <footer
-className="relative z-10 py-6 mt-16 text-center w-full"
+className="relative z-10 py-6 mt-24 text-center w-full"
 style={{
 borderTop: "1px solid rgba(201,130,10,0.15)",
 color: "#f5e6c8aa",

@@ -1,2 +1,11 @@
-declare module 'stream-chat';
-declare module '@clerk/clerk-sdk-node';
+declare module "stream-chat";
+
+import "express";
+
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}

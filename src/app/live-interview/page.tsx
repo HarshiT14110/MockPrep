@@ -9,7 +9,6 @@ import {
   ParticipantView, useCallStateHooks, useCall,
 } from "@stream-io/video-react-sdk";
 import '@stream-io/video-react-sdk/dist/css/styles.css';
-import { useUser, useAuth } from '@clerk/clerk-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   Mic, MicOff, Video, VideoOff, PhoneOff,
@@ -50,8 +49,10 @@ interface Feedback {
   overall_feedback: string; rating: string;
 }
 interface AIInterviewUIProps {
-  client: any; call: any;
-  setClient: React.Dispatch<any>; clerkUser: any;
+  client: any;
+  call: any;
+  setClient: React.Dispatch<any>;
+  user: any;
 }
 
 /* ════ Voice Wave Bars ════ */
@@ -82,11 +83,11 @@ const ratingStyle = (rating: string): React.CSSProperties => {
 /* ════════════════════════════════════════
    AI INTERVIEW UI
 ════════════════════════════════════════ */
-const AIInterviewUI: React.FC<AIInterviewUIProps> = ({ client, call, setClient, clerkUser }) => {
+const AIInterviewUI: React.FC<AIInterviewUIProps> = ({ client, call, setClient, user }) => {
   const navigate = useNavigate();
   const interviewType =
   new URLSearchParams(window.location.search).get("type") || "technical";
-  const { getToken } = useAuth();
+  const getToken = () => localStorage.getItem("token");
   const { useMicrophoneState, useCameraState, useCallEndedAt, useLocalParticipant } = useCallStateHooks();
   const { microphone } = useMicrophoneState();
   const { camera } = useCameraState();
@@ -393,7 +394,7 @@ const AIInterviewUI: React.FC<AIInterviewUIProps> = ({ client, call, setClient, 
     const fetchQuestions = async () => {
       if (!interviewStarted) return;
       try {
-        const token = await getToken();
+        const token = getToken();
 
 /* detect interview type from URL */
 const interviewType =
@@ -493,7 +494,7 @@ const res = await fetch(endpoint, {
     if (analyzingAnswer) return;
     setVoiceState("processing"); setAnalyzingAnswer(true); setFeedback(null);
     try {
-      const token = await getToken();
+      const token = getToken();
       const res = await fetch('/api/analyze-answer', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: questions[currentIndex]?.text || "", answer: spokenAnswer }) });
       if (!res.ok) throw new Error("Failed to analyze answer");
       const data = await res.json();
@@ -593,7 +594,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     try {
       setReportLoading(true);
 
-      const token = await getToken();
+      const token = getToken();
 
       const res = await fetch("/api/generate-report", {
         method: "POST",
@@ -663,7 +664,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             </div>
             <h1 style={{ fontSize: 30, fontWeight: 700, color: T.text, margin: 0, letterSpacing: '-0.5px' }}>Interview Report Card</h1>
           </div>
-          <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 36 }}>Candidate: {clerkUser?.fullName}</p>
+          <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 36 }}>Candidate: {user?.fullName}</p>
 
           {reportLoading && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: T.textMuted, padding: '24px 0' }}>
@@ -1300,33 +1301,89 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
    PAGE WRAPPER  (original logic untouched)
 ════════════════════════════════════════ */
 export default function LiveInterviewPage() {
-  const { user: clerkUser, isSignedIn } = useUser();
+const token = localStorage.getItem("token");
+
+if (!token) {
+  window.location.href = "/dashboard";
+}
+
+const payload = JSON.parse(atob(token.split(".")[1]));
+
+const isSignedIn = true;
+
+const user = {
+  id: payload.userId,
+  fullName: "User"
+};
   const navigate = useNavigate();
   
   const [searchParams] = useSearchParams();
   const interviewId = searchParams.get('interviewId');
   const [client, setClient] = useState<any | null>(null);
   const [call, setCall]     = useState<any>(null);
+  const initialized = React.useRef(false);
 
   useEffect(() => {
-    if (!isSignedIn || !clerkUser) { navigate('/dashboard'); return; }
-    const setupStreamClient = async () => {
-      if (!API_KEY) { console.error('Stream API Key missing.'); return; }
-      try {
-        const response = await fetch('/api/stream-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: clerkUser.id }) });
-        const data = await response.json();
-        if (!data.token) throw new Error("No token received.");
-        const streamClient = new StreamVideoClient({ apiKey: API_KEY, user: { id: clerkUser.id, name: clerkUser.fullName || clerkUser.id, image: clerkUser.imageUrl }, token: data.token });
-        setClient(streamClient);
-        await navigator.mediaDevices.getUserMedia({ video: true, audio: true }).catch(console.warn);
-        const callId = interviewId || `interview-${Date.now()}`;
-        const newCall = streamClient.call('default', callId);
-        await newCall.join({ create: true });
-        setCall(newCall);
-      } catch (error) { console.error('Stream setup failed:', error); }
-    };
-    setupStreamClient();
-  }, [isSignedIn, clerkUser, navigate, interviewId]);
+
+  if (initialized.current) return;
+  initialized.current = true;
+
+  if (!isSignedIn || !user) {
+    navigate("/dashboard");
+    return;
+  }
+
+  const setupStreamClient = async () => {
+    if (!API_KEY) {
+      console.error("Stream API Key missing.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+const response = await fetch("/api/stream-token", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  },
+  body: JSON.stringify({ userId: user.id })
+});
+      const data = await response.json();
+
+      if (!data.token) throw new Error("No token received.");
+
+      const streamClient = StreamVideoClient.getOrCreateInstance({
+  apiKey: API_KEY,
+  user: {
+    id: user.id,
+    name: user.fullName || "User"
+  },
+  token: data.token
+});
+
+      setClient(streamClient);
+
+      await navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .catch(console.warn);
+
+      const callId = interviewId || `interview-${Date.now()}`;
+      const newCall = streamClient.call("default", callId);
+
+      await newCall.join({ create: true });
+
+      setCall(newCall);
+
+    } catch (error) {
+      console.error("Stream setup failed:", error);
+    }
+  };
+
+  setupStreamClient();
+
+}, [isSignedIn, user, navigate, interviewId]);
 
   if (!client || !call) {
     return (
@@ -1343,7 +1400,7 @@ export default function LiveInterviewPage() {
   return client ? (
     <StreamVideo client={client}>
       <StreamCall call={call}>
-        <AIInterviewUI client={client} call={call} setClient={setClient} clerkUser={clerkUser} />
+        <AIInterviewUI client={client} call={call} setClient={setClient} user={user} />
       </StreamCall>
     </StreamVideo>
   ) : null;

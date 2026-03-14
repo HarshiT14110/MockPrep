@@ -5,12 +5,21 @@ import { fileURLToPath } from "url";
 import "dotenv/config";
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { StreamClient } from "@stream-io/node-sdk";
-import { clerkMiddleware, requireAuth, getAuth } from "@clerk/express";
+const STREAM_API_KEY = process.env.STREAM_API_KEY!;
+const STREAM_SECRET_KEY = process.env.STREAM_SECRET_KEY!;
+
+const streamClient = new StreamClient(
+  STREAM_API_KEY,
+  STREAM_SECRET_KEY
+);
 import multer from "multer";
 import pdfParse from "@cedrugs/pdf-parse";
 import cors from "cors";
 import Question from "./Question.model";
 import InterviewQuestion from "./InterviewQuestion.model";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import jwt from "jsonwebtoken";
 // ==============================
 // Fix __dirname for ESM
 // ==============================
@@ -43,7 +52,7 @@ mongoose.set("returnDocument", "after");
 
 interface IUser extends Document {
 
-  clerk_user_id: string;
+  google_user_id: string;
 
   name?: string;
   email?: string;
@@ -73,7 +82,7 @@ interface IUser extends Document {
 // ==============================
 
 const userSchema: Schema<IUser> = new Schema({
-  clerk_user_id: { type: String, required: true, unique: true },
+  google_user_id: { type: String, required: true, unique: true },
   name: String,
   email: String,
   image: String,
@@ -82,7 +91,7 @@ const userSchema: Schema<IUser> = new Schema({
   resume_text: String,
   completed_sessions: { type: Number, default: 0 },
 
-bits: { type: Number, default: 96 },
+bits: { type: Number, default: 0 },
 
 plan: { type: String, enum: ["free", "pro"], default: "free" },
 
@@ -99,6 +108,40 @@ last_request_date: { type: Date, default: Date.now },
 
 const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      callbackURL: `${process.env.APP_URL}/auth/google/callback`,
+    },
+    async (_accessToken, _refreshToken, profile, done) => {
+      try {
+
+        const email = profile.emails?.[0]?.value;
+        const name = profile.displayName;
+        const image = profile.photos?.[0]?.value;
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+          user = await User.create({
+  email,
+  name,
+  image,
+  google_user_id: profile.id
+});
+        }
+
+        return done(null, user as any);
+
+} catch (err) {
+  return done(err as Error, undefined);
+}
+    }
+  )
+);
+
 
 
 // ==============================
@@ -107,7 +150,7 @@ const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 
 async function deductBits(userId: string, cost: number) {
 
-  const user = await User.findOne({ clerk_user_id: userId }).exec();
+  const user = await User.findOne({ google_user_id: userId }).exec();
 
   if (!user) return false;
 
@@ -148,6 +191,9 @@ async function deductBits(userId: string, cost: number) {
   return true;
 }
 
+interface AuthRequest extends Request {
+  userId?: string;
+}
 // ==============================
 // Start Server
 // ==============================
@@ -158,17 +204,55 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+  app.use(passport.initialize());
+  app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false }),
+  (req: any, res: Response) => {
+
+   const token = jwt.sign(
+  { userId: req.user.google_user_id },
+  process.env.JWT_SECRET as string,
+  { expiresIn: "7d" }
+);
+
+    res.redirect(`${process.env.APP_URL}/auth-success?token=${token}`);
+  }
+);
 
   // ==============================
-  // Clerk Middleware
+  // JWT Middleware
   // ==============================
 
-  app.use(
-    clerkMiddleware({
-      secretKey: process.env.CLERK_SECRET_KEY,
-      publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    })
-  );
+  function requireJwtAuth(req: AuthRequest, res: Response, next: NextFunction) {
+
+  const header = req.headers.authorization;
+
+  if (!header) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const token = header.split(" ")[1];
+
+  try {
+
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+
+    req.userId = decoded.userId;
+
+    next();
+
+  } catch {
+
+    res.status(401).json({ error: "Invalid token" });
+
+  }
+}
 
   // ==============================
   // API Logger
@@ -193,18 +277,18 @@ async function startServer() {
   // Sync User
   // ==============================
 
-  app.post("/api/sync-user", requireAuth(), async (req, res) => {
+  app.post("/api/sync-user", requireJwtAuth, async (req: AuthRequest, res: Response) => {
     try {
-      const { userId } = getAuth(req);
+      const userId = req.userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
       const { name, email, image } = req.body;
 
       await User.findOneAndUpdate(
-  { clerk_user_id: userId },
+  { google_user_id: userId },
   {
     $set: {
-      clerk_user_id: userId,
+      google_user_id: userId,
       name,
       email,
       image
@@ -217,9 +301,9 @@ async function startServer() {
     }
   },
   { upsert: true, new: true }
-); res.json({ User });
+);
 
-      res.json({ User });
+res.json({ user: true });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Sync failed" });
@@ -230,17 +314,17 @@ async function startServer() {
 // Dashboard Route
 // ==============================
 
-app.get("/api/dashboard-data", requireAuth(), async (req, res) => {
+app.get("/api/dashboard-data", requireJwtAuth, async (req: AuthRequest, res: Response) => {
 
   try {
 
-    const { userId } = getAuth(req);
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const user = await User.findOne({ clerk_user_id: userId });
+    const user = await User.findOne({ google_user_id: userId });
 
     if (!user) {
       return res.json({ user: null });
@@ -301,9 +385,9 @@ const remainingBits = Math.max(12 - usedToday, 0);
   // Stream Token Route
   // ==============================
 
-  app.post("/api/stream-token", requireAuth(), async (req, res) => {
+  app.post("/api/stream-token", requireJwtAuth, async (req: AuthRequest, res: Response) => {
     try {
-      const { userId } = getAuth(req);
+      const userId = req.userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
       const STREAM_API_KEY = process.env.STREAM_API_KEY;
@@ -313,13 +397,9 @@ const remainingBits = Math.max(12 - usedToday, 0);
         return res.status(500).json({ error: "Stream config missing" });
       }
 
-      const client = new StreamClient(STREAM_API_KEY, STREAM_SECRET_KEY);
-      const token = client.createToken(userId);
+    const token = streamClient.createToken(userId);
 
-      res.json({
-        token,
-        apiKey: STREAM_API_KEY,
-      });
+res.json({ token });
     } catch (error) {
       console.error("Stream token error:", error);
       res.status(500).json({ error: "Failed to generate token." });
@@ -333,16 +413,16 @@ const remainingBits = Math.max(12 - usedToday, 0);
   const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 },
   });
-  console.log("Generate Questions hit. userId:", User);
+  console.log("Generate Questions route loaded");
   app.post(
   "/api/upload-resume",
-  requireAuth(),
+  requireJwtAuth,
   upload.single("resume"),
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
-      const { userId } = getAuth(req);
+      const userId = req.userId;
 
-      console.log("🔥 Clerk userId:", userId);
+      console.log("🔥 Google userId:", userId);
 
       if (!userId) {
         console.log("❌ No userId found");
@@ -358,7 +438,7 @@ const remainingBits = Math.max(12 - usedToday, 0);
       const extractedText = data.text;
 
       const updatedUser = await User.findOneAndUpdate(
-  { clerk_user_id: userId },
+  { google_user_id: userId },
   {
     resume_text: extractedText,
 
@@ -390,11 +470,11 @@ const remainingBits = Math.max(12 - usedToday, 0);
   // Generate Interview Questions (Gemini)
   // ==============================
 
-   app.post("/api/generate-questions", requireAuth(), async (req, res) => {
+   app.post("/api/generate-questions", requireJwtAuth, async (req: AuthRequest, res: Response) => {
   try {
     console.log("🔥 HIT generate-questions route");
 
-    const { userId } = getAuth(req);
+    const userId = req.userId;
     console.log("🔥 userId:", userId);
 
     if (!userId) {
@@ -410,7 +490,7 @@ if (!allowed) {
 });
 }
 
-    const user = await User.findOne({ clerk_user_id: userId });
+    const user = await User.findOne({ google_user_id: userId });
     const resumeText = user?.resume_text || "";
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -496,9 +576,9 @@ function getFallbackQuestions(): string[] {
   // Analyze Answer (Gemini)
   // ==============================
 
-  app.post("/api/analyze-answer", requireAuth(), async (req, res) => {
+  app.post("/api/analyze-answer", requireJwtAuth, async (req: AuthRequest, res: Response) => {
     try {
-      const { userId } = getAuth(req);
+      const userId = req.userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
       const { question, answer } = req.body;
@@ -541,9 +621,22 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
       );
 
       const data = await response.json();
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
       const cleaned = raw.replace(/```json|```/g, "").trim();
-      const feedback = JSON.parse(cleaned);
+      let feedback;
+
+try {
+  feedback = JSON.parse(cleaned);
+} catch (err) {
+  console.error("Gemini JSON parse error:", cleaned);
+
+  feedback = {
+    strengths: ["Response recorded"],
+    improvements: ["AI formatting error"],
+    overall_feedback: "Answer captured but AI formatting failed.",
+    rating: "Average"
+  };
+}
 
       res.json({ feedback });
     } catch (err: any) {
@@ -558,9 +651,9 @@ The rating must be exactly one of: "Excellent", "Good", "Average", "Needs Work"`
     //ATS Score Route -------------------------------
 
          
-              app.post("/api/ats-score", requireAuth(), async (req, res) => {
+              app.post("/api/ats-score", requireJwtAuth, async (req: AuthRequest, res: Response) => {
                 try {
-                  const { userId } = getAuth(req);
+                  const userId = req.userId;
                   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
                   const allowed = await deductBits(userId, 2);
@@ -571,7 +664,7 @@ if (!allowed) {
   });
 }
 
-                 const user = await User.findOne({ clerk_user_id: userId });
+                 const user = await User.findOne({ google_user_id: userId });
                   const resumeText = user?.resume_text;
 
                   // ✅ Return cached ATS score if already exists
@@ -627,7 +720,7 @@ if (!allowed) {
                   );
 
                   const data = await response.json();
-                  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
                   const cleaned = raw.replace(/```json|```/g, "").trim();
                   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
@@ -646,7 +739,7 @@ if (!allowed) {
                   // ✅ Save ATS result in MongoDB
 
                 await User.findOneAndUpdate(
-                  { clerk_user_id: userId },
+                  { google_user_id: userId },
                   {
                     ats_score: result.score,
                     ats_summary: result.summary,
@@ -669,10 +762,10 @@ if (!allowed) {
 
     app.post(
   "/api/generate-report",
-  requireAuth(),
-  async (req: Request, res: Response) => {
+  requireJwtAuth,
+  async (req: AuthRequest, res: Response) => {
   try {
-    const { userId } = getAuth(req);
+    const userId = req.userId;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     const allowed = await deductBits(userId, 5);
@@ -724,7 +817,7 @@ ${JSON.stringify(feedbackList)}
     );
 
     const data = await response.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
 
     let cleaned = raw.replace(/```json|```/g, "").trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
@@ -740,7 +833,7 @@ ${JSON.stringify(feedbackList)}
     }
 
     await User.findOneAndUpdate(
-  { clerk_user_id: userId },
+  { google_user_id: userId },
   { $inc: { completed_sessions: 1 } }
 );
 
@@ -756,7 +849,7 @@ ${JSON.stringify(feedbackList)}
     //Question Model Route  ==============================
 
 
-      app.get("/api/questions/random", async (req, res) => {
+      app.get("/api/questions/random", async (req: AuthRequest, res: Response) => {
   try {
     const { topic, difficulty } = req.query;
 
@@ -790,7 +883,7 @@ ${JSON.stringify(feedbackList)}
 
 // HR/Behavioral Question Route  ==============================
 
-app.get("/api/interview-questions", requireAuth(), async (req, res) => {
+app.get("/api/interview-questions", requireJwtAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { type } = req.query;
 
@@ -813,7 +906,7 @@ app.get("/api/interview-questions", requireAuth(), async (req, res) => {
   }
 });
 
-app.get("/api/interview-questions/adaptive", requireAuth(), async (req, res) => {
+app.get("/api/interview-questions/adaptive", requireJwtAuth, async (req: AuthRequest, res: Response) => {
   try {
 
     const { type, difficulty } = req.query;
@@ -844,10 +937,10 @@ app.get("/api/interview-questions/adaptive", requireAuth(), async (req, res) => 
 // Chatbot Route
 // ==============================
 
-app.post("/api/chatbot", requireAuth(), async (req, res) => {
+app.post("/api/chatbot", requireJwtAuth, async (req: AuthRequest, res: Response) => {
   try {
 
-   const { userId } = getAuth(req);
+   const userId = req.userId;
 
 if (!userId) {
   return res.status(401).json({ error: "Unauthorized" });
