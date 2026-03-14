@@ -15,8 +15,8 @@ const streamClient = new StreamClient(
 import multer from "multer";
 import pdfParse from "@cedrugs/pdf-parse";
 import cors from "cors";
-import Question from "./Question.model";
-import InterviewQuestion from "./InterviewQuestion.model";
+import Question from "./Question.model.js";
+import InterviewQuestion from "./InterviewQuestion.model.js";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import jwt from "jsonwebtoken";
