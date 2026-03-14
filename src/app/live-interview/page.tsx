@@ -14,7 +14,7 @@ import {
   Mic, MicOff, Video, VideoOff, PhoneOff,
   Cpu, Info, CheckCircle, Loader2, ChevronRight
 } from 'lucide-react';
-
+const API = import.meta.env.VITE_API_URL || "https://mockprep-backend-0eaw.onrender.com";
 const API_KEY = import.meta.env.VITE_STREAM_API_KEY || import.meta.env.VITE_NEXT_PUBLIC_STREAM_API_KEY;
 
 /* ════════════════════════════════════════
@@ -400,11 +400,11 @@ const AIInterviewUI: React.FC<AIInterviewUIProps> = ({ client, call, setClient, 
 const interviewType =
   new URLSearchParams(window.location.search).get("type") || "technical";
 
-let endpoint = "/api/generate-questions";
+let endpoint = `${API}/api/generate-questions`;
 let method = "POST";
 
 if (interviewType === "hr" || interviewType === "behavioral") {
-  endpoint = `/api/interview-questions?type=${interviewType}`;
+  endpoint = `${API}/api/interview-questions?type=${interviewType}`;
   method = "GET";
 }
 
@@ -495,7 +495,7 @@ const res = await fetch(endpoint, {
     setVoiceState("processing"); setAnalyzingAnswer(true); setFeedback(null);
     try {
       const token = getToken();
-      const res = await fetch('/api/analyze-answer', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: questions[currentIndex]?.text || "", answer: spokenAnswer }) });
+      const res = await fetch(`${API}/api/analyze-answer`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: questions[currentIndex]?.text || "", answer: spokenAnswer }) });
       if (!res.ok) throw new Error("Failed to analyze answer");
       const data = await res.json();
       if (!data?.feedback) throw new Error("Invalid feedback response");
@@ -596,7 +596,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 
       const token = getToken();
 
-      const res = await fetch("/api/generate-report", {
+      const res = await fetch(`${API}/api/generate-report`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1342,7 +1342,7 @@ const user = {
     try {
       const token = localStorage.getItem("token");
 
-const response = await fetch("/api/stream-token", {
+const response = await fetch(`${API}/api/stream-token`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

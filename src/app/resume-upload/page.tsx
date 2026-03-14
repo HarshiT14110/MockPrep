@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+const API = import.meta.env.VITE_API_URL || "https://mockprep-backend-0eaw.onrender.com";
 
 /* ════════════════════════════════════════
    DESIGN TOKENS  (warm espresso + amber-gold)
@@ -88,7 +89,7 @@ export default function ResumeUploadPage() {
     const formData = new FormData();
     formData.append("resume", selectedFile);
 
-    const response = await fetch("/api/upload-resume", {
+    const response = await fetch(`${API}/api/upload-resume`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`

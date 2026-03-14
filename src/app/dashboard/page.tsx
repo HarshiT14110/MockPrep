@@ -20,6 +20,7 @@ import DashboardScrollHero from "../../components/dashboard/DashboardScrollHero.
 import AIChatbot from "../../components/dashboard/AIChatbot.js"
   import { useScroll } from "motion/react"
   import Footer from "../../components/Footer.js"
+  const API = import.meta.env.VITE_API_URL || "https://mockprep-backend-0eaw.onrender.com";
 
 const DARK = {
   pageBg:       '#130f09',
@@ -216,7 +217,7 @@ const handleCheckATS = async () => {
 
     const token = localStorage.getItem("token");
 
-    const res = await fetch("/api/ats-score", {
+    const res = await fetch(`${API}/api/ats-score`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -262,7 +263,7 @@ const handleCheckATS = async () => {
       setLoading(true); setError(null);
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch('/api/dashboard-data', { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch(`${API}/api/dashboard-data`, { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) throw new Error(`Failed to fetch dashboard data: ${response.status}`);
         const data = await response.json();
         const userProfile = data.user;

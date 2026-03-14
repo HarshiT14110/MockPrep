@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { Bot, Send, X } from "lucide-react"
+const API = import.meta.env.VITE_API_URL || "https://mockprep-backend-0eaw.onrender.com";
 export default function AIChatbot() {const token = localStorage.getItem("token");
 const [open , setOpen] = useState(false)
 const [messages,setMessages] = useState([
@@ -25,7 +26,7 @@ setLoading(true)
 try{
 const token = localStorage.getItem("token");
 
-const res = await fetch("/api/chatbot", {
+const res = await fetch(`${API}/api/chatbot`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
