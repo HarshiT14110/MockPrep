@@ -203,7 +203,10 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  app.use(cors());
+  // ✅ ADD CORS HERE
+  app.use(cors({
+    origin: "*"
+  }));
   app.use(express.json());
   app.use(passport.initialize());
   app.get(
