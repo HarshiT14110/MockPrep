@@ -140,7 +140,7 @@ borderBottom: isDark ? "1px solid rgba(201,130,10,0.15)" : ""
 ) : (
   <button
     onClick={() => {
-      window.location.href = "http://localhost:3000/auth/google";
+      window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
     }}
   >
     Sign in with Google
@@ -201,7 +201,7 @@ isDark
             {!isSignedIn ? (
   <button
   onClick={() => {
-    window.location.href = "http://localhost:3000/auth/google";
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
   }}
   className="px-4 py-2 rounded-lg bg-[#c9820a] text-white font-medium hover:opacity-90 transition"
 >
