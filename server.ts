@@ -114,7 +114,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackURL: `${process.env.APP_URL}/auth/google/callback`,
+      callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {
@@ -204,9 +204,13 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
 
   // ✅ ADD CORS HERE
-  app.use(cors({
-    origin: "*"
-  }));
+ app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://mock-prep-omega.vercel.app"
+  ],
+  credentials: true
+}));
   app.use(express.json());
   app.use(passport.initialize());
   app.get(
