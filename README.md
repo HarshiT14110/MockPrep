@@ -178,7 +178,7 @@ It combines **interview practice, resume optimization, and coding preparation** 
 
 **Authentication**
 
-* Clerk
+* Google OAuth
 
 **Deployment**
 
@@ -191,7 +191,7 @@ It combines **interview practice, resume optimization, and coding preparation** 
 ```
 User Interface (React)
         │
-Authentication (Clerk)
+Authentication (OAuth)
         │
 Backend API (Node.js + Express)
         │
