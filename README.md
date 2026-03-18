@@ -16,7 +16,7 @@ Prepare smarter. Practice faster. Get hired sooner.
 ![Node](https://img.shields.io/badge/Backend-Node.js-green?style=for-the-badge\&logo=node.js)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB-darkgreen?style=for-the-badge\&logo=mongodb)
 ![Gemini](https://img.shields.io/badge/AI-Gemini-orange?style=for-the-badge)
-![Clerk](https://img.shields.io/badge/Auth-Clerk-purple?style=for-the-badge)
+![Google OAuth](https://img.shields.io/badge/Auth-Clerk-purple?style=for-the-badge)
 
 ![License](https://img.shields.io/github/license/HarshiT14110/MockPrep?style=flat-square)
 ![Stars](https://img.shields.io/github/stars/HarshiT14110/MockPrep?style=flat-square)
